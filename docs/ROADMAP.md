@@ -2,7 +2,7 @@
 
 ## Phase 1 : Fondations & CRUD (MVP Technique)
 
-- [ ] Initialisation du projet Tauri + React.
+- [x] Initialisation du projet Tauri + React.
 - [ ] Configuration de `rusqlite` et création automatique des tables au démarrage.
 - [ ] Interface Frontend :
   - [ ] Page de gestion des Matières (Ajout/Suppression/Couleur).

@@ -8,9 +8,10 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:clean": "cd src-tauri && cargo clean && cd ..",
     "tauri:d": "tauri dev",
     "tauri:b": "tauri build",
+    "tauri:clean": "cd src-tauri && cargo clean && cd ..",
+    "tauri:test": "cd src-tauri && cargo test && cd ..",
     "up-version": "node scripts/bump-version.cjs"
   },
   "dependencies": {
