@@ -1,43 +1,53 @@
-# 📅 Kronos
+# ⏳ Kronos
 
-Un générateur d'emplois du temps automatisé et performant, conçu pour résoudre les contraintes complexes du milieu éducatif (enseignants, salles, volume horaire).
+> **Générateur d'emploi du temps automatisé, local et performant.**
 
-## 🚀 Vision du Projet
+Kronos est une application de bureau conçue avec **Tauri** pour simplifier la création d'emplois du temps scolaires. Elle s'adapte à la complexité de l'établissement, du simple instituteur gérant sa classe unique au proviseur gérant un lycée complet.
 
-L'objectif est de fournir une application de bureau locale (Desktop), capable de générer des plannings scolaires en respectant deux types de critères :
+🔗 **Dépôt :** [https://github.com/CoRExE/Kronos.git](https://github.com/CoRExE/Kronos.git)
 
-1. **Validité (Contraintes Fortes)** : Aucun conflit de cours, respect des volumes horaires.
-2. **Qualité (Contraintes Faibles)** : Équilibrage de la charge, regroupement des cours, préférences des enseignants.
+## 🎯 Pourquoi Kronos ?
+
+La création d'emplois du temps est un casse-tête. Kronos résout ce problème via une approche locale (pas de données dans le cloud) et modulaire.
+
+### Deux Modes de Fonctionnement (Profils)
+
+1. **Mode "Classe Unique" (Primaire / Maternelle)** :
+    * Interface simplifiée.
+    * Pas de gestion de conflits de professeurs ou de salles.
+    * Focus sur la répartition pédagogique et les quotas horaires.
+2. **Mode "Établissement" (Secondaire / Supérieur)** :
+    * Gestion complète des ressources partagées.
+    * Détection des collisions (Professeurs, Salles, Groupes).
+    * Contraintes avancées (Disponibilités enseignants, Salles spécifiques).
 
 ## 🛠 Stack Technique
 
-* **Core :** [Tauri v2](https://tauri.app/) (Performance & Sécurité)
-* **Backend / Algorithmique :** Rust (Rapidité de calcul pour les algorithmes NP-complet)
-* **Database :** SQLite (via `rusqlite`) - Stockage local sans configuration.
-* **Frontend :** React + TypeScript (Interface réactive)
-* **UI Library :** Shadcn/UI + TailwindCSS
+* **Application Desktop :** [Tauri v2](https://tauri.app/)
+* **Frontend :** React + TypeScript + Shadcn/UI
+* **Backend & Algorithmes :** Rust
+* **Base de données :** SQLite (via `rusqlite`) - Embarquée, fichier local `.db`.
 
-## 📦 Installation & Démarrage
+## 🚀 Démarrage Rapide
 
 ### Pré-requis
 
 * Node.js & npm/pnpm
 * Rust & Cargo
 
-### Lancer le projet
+### Installation
 
 ```bash
-# Installation des dépendances front
-npm install
-
-# Lancer en mode développement (Front + Rust)
-npm run tauri dev
+git clone https://github.com/CoRExE/Kronos.git
+cd Kronos
+pnpm install
+pnpm run tauri dev
 ```
 
-## 📂 Structure du projet
+## 📚 Documentation
 
-La documentation détaillée se trouve dans le dossier ./docs :
+La documentation détaillée se trouve dans le dossier `./docs` :
 
-* Architecture & Base de données : Comment les données circulent.
-* Algorithmes : Explication du Backtracking et de l'Algorithme Génétique.
-* Roadmap : Les étapes du développement.
+* **Architecture Technique** : Modèle de données et flux.
+* **Algorithmes** : Backtracking et Génétique.
+* **Roadmap** : Plan de développement.
