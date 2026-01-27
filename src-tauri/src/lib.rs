@@ -2,8 +2,12 @@ use std::sync::Mutex;
 use rusqlite::Connection;
 use tauri::{State, Manager};
 
-// On importe notre module DB
+// Modules
 mod db;
+mod models;
+mod commands;
+
+use commands::subjects;
 
 // Structure de l'état global pour partager la connexion BDD
 pub struct AppState {
@@ -82,7 +86,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet, 
             check_is_configured, 
-            setup_app
+            setup_app,
+            // Subjects Commands
+            subjects::get_all_subjects,
+            subjects::create_subject,
+            subjects::update_subject,
+            subjects::delete_subject
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
