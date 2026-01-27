@@ -57,18 +57,13 @@ export default function SubjectsManager() {
 
   // Supprimer
   async function handleDelete(id: number) {
-    if (!confirm("Voulez-vous vraiment supprimer cette matière ?")) return;
-    
     try {
-      await invoke("delete_subject", { id: id });
-      
-      // On recharge la liste pour voir le changement
-      fetchSubjects();
-    } catch (err) {
-      console.error("Erreur backend suppression:", err);
-      alert("Impossible de supprimer : " + err);
+      await invoke('delete_subject', { id });
+      await fetchSubjects();
+    } catch (error) {
+      alert(`Erreur: ${error}`);
     }
-  }
+  };
 
   useEffect(() => {
     fetchSubjects();
