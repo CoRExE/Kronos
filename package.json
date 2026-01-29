@@ -10,9 +10,10 @@
     "tauri": "tauri",
     "tauri:d": "tauri dev",
     "tauri:b": "tauri build",
-    "tauri:clean": "cd src-tauri && cargo clean && cd ..",
-    "tauri:test": "cd src-tauri && cargo test && cd ..",
-    "up-version": "node scripts/bump-version.cjs"
+    "tauri:clean": "cd src-tauri && cargo clean",
+    "tauri:test": "cd src-tauri && cargo test",
+    "up-version": "node scripts/bump-version.cjs",
+    "db-clean": "cd ~ && rm 'Library/Application Support/com.ceestos.kronos/kronos.db'"
   },
   "dependencies": {
     "react": "^19.1.0",

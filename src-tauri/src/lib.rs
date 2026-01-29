@@ -8,6 +8,7 @@ mod models;
 mod commands;
 
 use commands::subjects;
+use commands::groups;
 
 // Structure de l'état global pour partager la connexion BDD
 pub struct AppState {
@@ -91,7 +92,12 @@ pub fn run() {
             subjects::get_all_subjects,
             subjects::create_subject,
             subjects::update_subject,
-            subjects::delete_subject
+            subjects::delete_subject,
+            // Groups Commands
+            groups::get_all_groups,
+            groups::create_group,
+            groups::update_group,
+            groups::delete_group
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
