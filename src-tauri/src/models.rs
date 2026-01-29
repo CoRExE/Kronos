@@ -29,3 +29,23 @@ pub struct TimeSlot {
     pub end_time: String,   // HH:MM
     pub type_: String,      // 'LESSON', 'BREAK', 'LUNCH'
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Allocation {
+    pub id: Option<i32>,
+    pub group_id: i32,
+    pub subject_id: i32,
+    pub teacher_id: Option<i32>, // Peut être null
+    pub count: i32,
+}
+
+// Vue enrichie pour le frontend (avec les noms au lieu des IDs)
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AllocationView {
+    pub id: i32,
+    pub group_name: String,
+    pub subject_name: String,
+    pub teacher_name: Option<String>,
+    pub subject_color: String,
+    pub count: i32,
+}

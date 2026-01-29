@@ -2,6 +2,7 @@ import SubjectsManager from "./SubjectsManager";
 import GroupsManager from "./GroupsManager";
 import TimeSlotsConfigurator from "./TimeSlotsConfigurator";
 import TeachersManager from "./TeachersManager";
+import AllocationsManager from "./AllocationsManager";
 
 export default function Dashboard() {
   return (
@@ -20,6 +21,9 @@ export default function Dashboard() {
         <SubjectsManager />
         <TeachersManager />
         <GroupsManager />
+
+        {/* Section 3: Besoins (Le coeur du problème) */}
+        <AllocationsManager />
         
         {/* Placeholder pour les autres sections */}
         <div style={{ marginTop: "1rem", padding: "1rem", border: "1px dashed #ccc", borderRadius: "8px", color: "#888" }}>
