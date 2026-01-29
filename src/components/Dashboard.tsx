@@ -1,6 +1,7 @@
 import SubjectsManager from "./SubjectsManager";
 import GroupsManager from "./GroupsManager";
 import TimeSlotsConfigurator from "./TimeSlotsConfigurator";
+import TeachersManager from "./TeachersManager";
 
 export default function Dashboard() {
   return (
@@ -17,11 +18,12 @@ export default function Dashboard() {
 
         {/* Section 2: Données Pédagogiques */}
         <SubjectsManager />
+        <TeachersManager />
         <GroupsManager />
         
         {/* Placeholder pour les autres sections */}
         <div style={{ marginTop: "1rem", padding: "1rem", border: "1px dashed #ccc", borderRadius: "8px", color: "#888" }}>
-          <p>🚧 Prochainement : Gestion des Professeurs (Si mode établissement)...</p>
+          <p>🚧 Prochainement : Salles (Optionnel)...</p>
         </div>
       </main>
     </div>

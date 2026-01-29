@@ -16,6 +16,12 @@ pub struct StudentGroup {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct Teacher {
+    pub id: Option<i32>,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TimeSlot {
     pub id: Option<i32>,
     pub day_index: i32, // 0=Lundi, 6=Dimanche

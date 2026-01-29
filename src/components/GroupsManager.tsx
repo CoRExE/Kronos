@@ -52,6 +52,10 @@ export default function GroupsManager() {
 
   // Supprimer
   async function handleDelete(id: number) {
+    // Note: window.confirm ne fonctionne pas dans Tauri v2. 
+    // On passera par une confirmation interne plus tard.
+    // if (!confirm("Voulez-vous vraiment supprimer ce groupe ?")) return;
+    
     try {
       // On utilise la syntaxe explicite qui fonctionne :)
       await invoke("delete_group", { id: id });
