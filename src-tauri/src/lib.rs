@@ -9,6 +9,7 @@ mod commands;
 
 use commands::subjects;
 use commands::groups;
+use commands::timeslots;
 
 // Structure de l'état global pour partager la connexion BDD
 pub struct AppState {
@@ -97,7 +98,12 @@ pub fn run() {
             groups::get_all_groups,
             groups::create_group,
             groups::update_group,
-            groups::delete_group
+            groups::delete_group,
+            // TimeSlots Commands
+            timeslots::get_slot_duration,
+            timeslots::set_slot_duration,
+            timeslots::get_time_slots,
+            timeslots::generate_time_slots
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

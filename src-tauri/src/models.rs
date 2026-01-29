@@ -14,3 +14,12 @@ pub struct StudentGroup {
     pub name: String,
     pub head_count: i32,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TimeSlot {
+    pub id: Option<i32>,
+    pub day_index: i32, // 0=Lundi, 6=Dimanche
+    pub start_time: String, // HH:MM
+    pub end_time: String,   // HH:MM
+    pub type_: String,      // 'LESSON', 'BREAK', 'LUNCH'
+}

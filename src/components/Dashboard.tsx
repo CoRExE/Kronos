@@ -1,5 +1,6 @@
 import SubjectsManager from "./SubjectsManager";
 import GroupsManager from "./GroupsManager";
+import TimeSlotsConfigurator from "./TimeSlotsConfigurator";
 
 export default function Dashboard() {
   return (
@@ -10,10 +11,12 @@ export default function Dashboard() {
       </header>
       
       <main style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-        {/* Section Matières */}
-        <SubjectsManager />
+        
+        {/* Section 1: Structure Temporelle */}
+        <TimeSlotsConfigurator />
 
-        {/* Section Groupes */}
+        {/* Section 2: Données Pédagogiques */}
+        <SubjectsManager />
         <GroupsManager />
         
         {/* Placeholder pour les autres sections */}
