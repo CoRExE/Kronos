@@ -3,6 +3,7 @@ import GroupsManager from "./GroupsManager";
 import TimeSlotsConfigurator from "./TimeSlotsConfigurator";
 import TeachersManager from "./TeachersManager";
 import AllocationsManager from "./AllocationsManager";
+import GenerationPanel from "./GenerationPanel";
 
 export default function Dashboard() {
   return (
@@ -22,8 +23,11 @@ export default function Dashboard() {
         <TeachersManager />
         <GroupsManager />
 
-        {/* Section 3: Besoins (Le coeur du problème) */}
+        {/* Section 3: Besoins */}
         <AllocationsManager />
+
+        {/* Section 4: Moteur */}
+        <GenerationPanel />
         
         {/* Placeholder pour les autres sections */}
         <div style={{ marginTop: "1rem", padding: "1rem", border: "1px dashed #ccc", borderRadius: "8px", color: "#888" }}>

@@ -6,12 +6,14 @@ use tauri::{State, Manager};
 mod db;
 mod models;
 mod commands;
+mod engine; // Le moteur CSP
 
 use commands::subjects;
 use commands::groups;
 use commands::timeslots;
 use commands::teachers;
 use commands::allocations;
+use commands::generator;
 
 // Structure de l'état global pour partager la connexion BDD
 pub struct AppState {
@@ -114,7 +116,9 @@ pub fn run() {
             // Allocations Commands
             allocations::get_allocations,
             allocations::create_allocation,
-            allocations::delete_allocation
+            allocations::delete_allocation,
+            // Generator
+            generator::generate_schedule
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
