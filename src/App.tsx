@@ -28,19 +28,21 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="container">
+      <div className="container" style={{ textAlign: "center", paddingTop: "20vh" }}>
         <p>Chargement de Kronos...</p>
       </div>
     );
   }
 
+  // Si configuré, on affiche le Dashboard en PLEIN ÉCRAN (pas de container contraint)
+  if (isConfigured) {
+    return <Dashboard />;
+  }
+
+  // Sinon, on affiche le Wizard centré
   return (
     <main className="container">
-      {isConfigured ? (
-        <Dashboard />
-      ) : (
-        <Wizard onComplete={() => checkConfiguration()} />
-      )}
+      <Wizard onComplete={() => checkConfiguration()} />
     </main>
   );
 }

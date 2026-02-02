@@ -49,3 +49,15 @@ pub struct AllocationView {
     pub subject_color: String,
     pub count: i32,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ScheduledLessonView {
+    pub id: i32, // ID de la leçon planifiée
+    pub day_index: i32,
+    pub start_time: String,
+    pub end_time: String,
+    pub group_name: String,
+    pub subject_name: String,
+    pub teacher_name: Option<String>,
+    pub subject_color: String,
+}

@@ -1,39 +1,80 @@
+import { useState } from "react";
+import Sidebar from "./Sidebar";
+import Drawer from "./ui/Drawer";
+
+// Composants Métier
+import ScheduleView from "./ScheduleView";
 import SubjectsManager from "./SubjectsManager";
 import GroupsManager from "./GroupsManager";
-import TimeSlotsConfigurator from "./TimeSlotsConfigurator";
 import TeachersManager from "./TeachersManager";
 import AllocationsManager from "./AllocationsManager";
+import TimeSlotsConfigurator from "./TimeSlotsConfigurator";
 import GenerationPanel from "./GenerationPanel";
 
 export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+
+  // Fonction pour rendre le contenu du tiroir dynamiquement
+  const renderDrawerContent = () => {
+    switch (activeTab) {
+      case "grid": return <TimeSlotsConfigurator />;
+      case "subjects": return <SubjectsManager />;
+      case "teachers": return <TeachersManager />;
+      case "groups": return <GroupsManager />;
+      case "allocations": return <AllocationsManager />;
+      case "generate": return <GenerationPanel />;
+      default: return null;
+    }
+  };
+
+  // Titre dynamique du tiroir
+  const getDrawerTitle = () => {
+    switch (activeTab) {
+      case "grid": return "Configuration de la Grille";
+      case "subjects": return "Gestion des Matières";
+      case "teachers": return "Gestion des Professeurs";
+      case "groups": return "Gestion des Classes";
+      case "allocations": return "Définition des Besoins";
+      case "generate": return "Moteur de Génération";
+      default: return "";
+    }
+  };
+
   return (
-    <div style={{ padding: "2rem", maxWidth: "800px", margin: "0 auto" }}>
-      <header style={{ marginBottom: "2rem", textAlign: "center" }}>
-        <h1>📅 Tableau de Bord Kronos</h1>
-        <p>Bienvenue dans votre gestionnaire d'emploi du temps.</p>
-      </header>
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       
-      <main style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+      {/* 1. Sidebar (Navigation) - Z-INDEX élevé pour rester cliquable */}
+      <Sidebar 
+        activeTab={activeTab} 
+        onSelect={(tab) => setActiveTab(tab === activeTab ? null : tab)} 
+      />
+
+      {/* 2. Main Content (L'Emploi du Temps) */}
+      <div style={{ flex: 1, overflow: "auto", position: "relative", backgroundColor: "#121212" }}>
         
-        {/* Section 1: Structure Temporelle */}
-        <TimeSlotsConfigurator />
-
-        {/* Section 2: Données Pédagogiques */}
-        <SubjectsManager />
-        <TeachersManager />
-        <GroupsManager />
-
-        {/* Section 3: Besoins */}
-        <AllocationsManager />
-
-        {/* Section 4: Moteur */}
-        <GenerationPanel />
-        
-        {/* Placeholder pour les autres sections */}
-        <div style={{ marginTop: "1rem", padding: "1rem", border: "1px dashed #ccc", borderRadius: "8px", color: "#888" }}>
-          <p>🚧 Prochainement : Salles (Optionnel)...</p>
+        {/* Header simple */}
+        <div style={{ padding: "1rem 2rem", borderBottom: "1px solid #333", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h1 style={{ margin: 0, fontSize: "1.2rem" }}>📅 Kronos - Emploi du Temps</h1>
+          <div style={{ fontSize: "0.8rem", color: "#666" }}>Mode Établissement</div>
         </div>
-      </main>
+
+        {/* La Grille Visuelle */}
+        <div style={{ padding: "1rem" }}>
+          <ScheduleView />
+        </div>
+
+      </div>
+
+      {/* 3. Le Tiroir (Intercalaires) */}
+      <Drawer 
+        isOpen={!!activeTab} 
+        onClose={() => setActiveTab(null)} 
+        title={getDrawerTitle()}
+        width="600px"
+      >
+        {renderDrawerContent()}
+      </Drawer>
+
     </div>
   );
 }

@@ -81,13 +81,8 @@ export default function TimeSlotsConfigurator() {
   }
 
   async function handleGenerate() {
-    // Note: window.confirm ne fonctionne pas toujours bien dans Tauri v2 selon l'OS.
-    // Pour l'instant on bypass la confirmation.
-    // if (!confirm("Attention : Cela va effacer la grille existante. Continuer ?")) return;
-
     setLoading(true);
     try {
-      // Construire les règles pour le backend
       const rules: GenerationRule[] = activeDays.map(dayIndex => ({
         day_index: dayIndex,
         start_time: timeRanges[dayIndex].start,
@@ -95,14 +90,12 @@ export default function TimeSlotsConfigurator() {
         slot_type: "LESSON"
       }));
 
-      // Appel Rust
       await invoke("generate_time_slots", { 
         rules, 
         slotDurationMinutes: Number(slotDuration) 
       });
 
-      alert("Grille générée avec succès !");
-      loadSlots(); // Recharger l'affichage
+      loadSlots();
     } catch (err) {
       console.error(err);
       alert("Erreur: " + err);
@@ -112,91 +105,132 @@ export default function TimeSlotsConfigurator() {
   }
 
   return (
-    <div style={{ padding: "1rem", border: "1px solid rgba(128,128,128,0.3)", borderRadius: "8px", marginTop: "1rem" }}>
-      <h2>⏰ Configuration de la Grille</h2>
+    <div style={{ 
+      padding: "1.5rem", 
+      border: "1px solid rgba(128,128,128,0.3)", 
+      borderRadius: "12px", 
+      marginTop: "1rem",
+      display: "grid",
+      gridTemplateColumns: "1fr 1px 1fr",
+      gap: "2rem",
+      textAlign: "left" // Tout à gauche par défaut
+    }}>
       
-      <div style={{ marginBottom: "1.5rem" }}>
-        <label>
-          <strong>Durée d'un cours (minutes) : </strong>
-          <input 
-            type="number" 
-            value={slotDuration} 
-            onChange={e => setSlotDuration(parseInt(e.target.value))}
-            style={{ width: "60px", padding: "0.4rem", marginLeft: "10px" }}
-          />
-        </label>
-        <p style={{ fontSize: "0.85rem", opacity: 0.7, marginTop: "0.5rem" }}>
-          Cela définit la granularité de l'emploi du temps (ex: 55 min).
+      {/* COLONNE GAUCHE : Configuration */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <h2 style={{ margin: 0 }}>⏰ Configuration de la Grille</h2>
+        
+        <div style={{ marginBottom: "0.5rem" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <strong>Durée d'un cours : </strong>
+            <input 
+              type="number" 
+              value={slotDuration} 
+              onChange={e => setSlotDuration(parseInt(e.target.value))}
+              style={{ width: "60px", padding: "0.4rem" }}
+            />
+            <span>minutes</span>
+          </label>
+          <p style={{ fontSize: "0.85rem", opacity: 0.7, marginTop: "0.5rem" }}>
+            Définit la granularité (ex: 55 min).
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gap: "0.8rem" }}>
+          {DAYS.map(day => (
+            <div key={day.index} style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              gap: "1rem",
+              opacity: activeDays.includes(day.index) ? 1 : 0.4
+            }}>
+              <label style={{ width: "100px", display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                <input 
+                  type="checkbox" 
+                  checked={activeDays.includes(day.index)}
+                  onChange={() => toggleDay(day.index)}
+                />
+                {day.label}
+              </label>
+              
+              <input 
+                type="time" 
+                value={timeRanges[day.index]?.start || "08:00"}
+                onChange={e => updateTimeRange(day.index, 'start', e.target.value)}
+                disabled={!activeDays.includes(day.index)}
+                style={{ padding: "2px 4px" }}
+              />
+              <span style={{ fontSize: "0.9rem", opacity: 0.6 }}>à</span>
+              <input 
+                type="time" 
+                value={timeRanges[day.index]?.end || "17:00"}
+                onChange={e => updateTimeRange(day.index, 'end', e.target.value)}
+                disabled={!activeDays.includes(day.index)}
+                style={{ padding: "2px 4px" }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: "auto", paddingTop: "1rem" }}>
+            <button 
+                onClick={handleGenerate} 
+                disabled={loading}
+                style={{ 
+                padding: "0.8rem 1.5rem", 
+                backgroundColor: "#646cff", 
+                color: "white", 
+                border: "none", 
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: "bold",
+                width: "100%"
+                }}
+            >
+                {loading ? "Génération..." : "⚙️ Générer la Grille"}
+            </button>
+        </div>
+      </div>
+
+      {/* SÉPARATEUR VERTICAL */}
+      <div style={{ backgroundColor: "rgba(128,128,128,0.3)", width: "1px", height: "100%" }}></div>
+
+      {/* COLONNE DROITE : Aperçu */}
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <h3 style={{ margin: "0 0 1rem 0" }}>Aperçu ({generatedSlots.length} créneaux)</h3>
+        
+        <div style={{ 
+            flex: 1,
+            maxHeight: "400px", 
+            overflowY: "auto", 
+            background: "rgba(128,128,128,0.05)", 
+            padding: "1rem", 
+            borderRadius: "8px",
+            border: "1px inset rgba(0,0,0,0.1)"
+        }}>
+          {generatedSlots.length === 0 ? (
+            <p style={{ opacity: 0.5, fontStyle: "italic" }}>Aucune grille générée.</p>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "8px" }}>
+              {generatedSlots.map(slot => (
+                <div key={slot.id} style={{ 
+                    fontSize: "0.8rem", 
+                    padding: "4px 8px", 
+                    background: "rgba(255,255,255,0.05)", 
+                    border: "1px solid rgba(128,128,128,0.1)",
+                    borderRadius: "4px"
+                }}>
+                   <strong style={{ color: "#646cff" }}>{DAYS[slot.day_index]?.label.substring(0,3)}</strong> {slot.start_time} - {slot.end_time}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <p style={{ fontSize: "0.75rem", opacity: 0.5, marginTop: "0.5rem" }}>
+            Les modifications ne sont effectives qu'après avoir cliqué sur "Générer".
         </p>
       </div>
 
-      <div style={{ display: "grid", gap: "1rem", marginBottom: "1.5rem" }}>
-        {DAYS.map(day => (
-          <div key={day.index} style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "1rem",
-            opacity: activeDays.includes(day.index) ? 1 : 0.5
-          }}>
-            <label style={{ width: "100px", display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
-              <input 
-                type="checkbox" 
-                checked={activeDays.includes(day.index)}
-                onChange={() => toggleDay(day.index)}
-              />
-              {day.label}
-            </label>
-            
-            <input 
-              type="time" 
-              value={timeRanges[day.index]?.start || "08:00"}
-              onChange={e => updateTimeRange(day.index, 'start', e.target.value)}
-              disabled={!activeDays.includes(day.index)}
-            />
-            <span>à</span>
-            <input 
-              type="time" 
-              value={timeRanges[day.index]?.end || "17:00"}
-              onChange={e => updateTimeRange(day.index, 'end', e.target.value)}
-              disabled={!activeDays.includes(day.index)}
-            />
-          </div>
-        ))}
-      </div>
-
-      <button 
-        onClick={handleGenerate} 
-        disabled={loading}
-        style={{ 
-          padding: "0.8rem 1.5rem", 
-          backgroundColor: "#646cff", 
-          color: "white", 
-          border: "none", 
-          borderRadius: "6px",
-          cursor: "pointer",
-          fontWeight: "bold"
-        }}
-      >
-        {loading ? "Génération en cours..." : "⚙️ Générer la Grille"}
-      </button>
-
-      {/* Aperçu rapide */}
-      <div style={{ marginTop: "2rem", borderTop: "1px solid #ccc", paddingTop: "1rem" }}>
-        <h3>Aperçu ({generatedSlots.length} créneaux)</h3>
-        <div style={{ maxHeight: "200px", overflowY: "auto", background: "rgba(0,0,0,0.05)", padding: "1rem", borderRadius: "4px" }}>
-          {generatedSlots.length === 0 ? (
-            <p>Aucune grille définie.</p>
-          ) : (
-            <ul style={{ listStyle: "none", padding: 0, fontSize: "0.9rem" }}>
-              {generatedSlots.map(slot => (
-                <li key={slot.id} style={{ marginBottom: "4px" }}>
-                   📅 {DAYS[slot.day_index]?.label} : {slot.start_time} - {slot.end_time}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

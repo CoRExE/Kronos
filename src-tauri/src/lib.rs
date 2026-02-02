@@ -117,8 +117,9 @@ pub fn run() {
             allocations::get_allocations,
             allocations::create_allocation,
             allocations::delete_allocation,
-            // Generator
-            generator::generate_schedule
+            // Generator & Schedule
+            generator::generate_schedule,
+            generator::get_scheduled_lessons
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
