@@ -72,42 +72,64 @@ pub fn load_data(conn: &Connection) -> Result<EngineInput, String> {
         }
     }
 
-        // 4. Charger la config globale
+            // 4. Charger la config globale
 
-        let max_daily_hours: i32 = conn.query_row(
+            let max_daily_hours: i32 = conn.query_row(
 
-            "SELECT value FROM project_config WHERE key = 'global_max_daily_subject_hours'",
+                "SELECT value FROM project_config WHERE key = 'global_max_daily_subject_hours'",
 
-            [],
+                [],
 
-            |row| {
+                |row| {
 
-                let s: String = row.get(0)?;
+                    let s: String = row.get(0)?;
 
-                Ok(s.parse::<i32>().unwrap_or(2))
+                    Ok(s.parse::<i32>().unwrap_or(2))
 
-            }
+                }
 
-        ).unwrap_or(2);
+            ).unwrap_or(2);
 
-    
+        
 
-        Ok(EngineInput {
+            let allow_consecutive: bool = conn.query_row(
 
-            time_slots,
+                "SELECT value FROM project_config WHERE key = 'allow_consecutive_subjects'",
 
-            slot_day_map,
+                [],
 
-            allocations: allocations_to_place,
+                |row| {
 
-            max_daily_hours_per_subject: max_daily_hours,
+                    let s: String = row.get(0)?;
 
-            teacher_forbidden_slots: teacher_forbidden,
+                    Ok(s == "true")
 
-            group_forbidden_slots: group_forbidden,
+                }
 
-        })
+            ).unwrap_or(false);
 
-    }
+        
+
+            Ok(EngineInput {
+
+                time_slots,
+
+                slot_day_map,
+
+                allocations: allocations_to_place,
+
+                max_daily_hours_per_subject: max_daily_hours,
+
+                allow_consecutive_subjects: allow_consecutive,
+
+                teacher_forbidden_slots: teacher_forbidden,
+
+                group_forbidden_slots: group_forbidden,
+
+            })
+
+        }
+
+        
 
     

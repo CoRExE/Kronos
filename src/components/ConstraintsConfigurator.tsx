@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export default function ConstraintsConfigurator() {
   const [maxHours, setMaxHours] = useState(2);
+  const [allowConsecutive, setAllowConsecutive] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -11,8 +12,10 @@ export default function ConstraintsConfigurator() {
 
   async function loadConfig() {
     try {
-      const val = await invoke<number>("get_global_max_daily_hours");
-      setMaxHours(val);
+      const h = await invoke<number>("get_global_max_daily_hours");
+      const c = await invoke<boolean>("get_allow_consecutive_subjects");
+      setMaxHours(h);
+      setAllowConsecutive(c);
     } catch (err) {
       console.error(err);
     }
@@ -20,7 +23,10 @@ export default function ConstraintsConfigurator() {
 
   async function handleSave() {
     try {
-      await invoke("set_global_max_daily_hours", { hours: parseInt(maxHours.toString()) });
+      await Promise.all([
+        invoke("set_global_max_daily_hours", { hours: parseInt(maxHours.toString()) }),
+        invoke("set_allow_consecutive_subjects", { allow: allowConsecutive })
+      ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -38,22 +44,38 @@ export default function ConstraintsConfigurator() {
           Ces règles s'appliquent à toutes les classes et toutes les matières.
         </p>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem", background: "rgba(128,128,128,0.05)", padding: "1rem", borderRadius: "8px" }}>
-          <div style={{ flex: 1 }}>
-            <strong>Limite journalière par matière</strong>
-            <p style={{ margin: 0, fontSize: "0.8rem", opacity: 0.7 }}>
-              Nombre maximum de créneaux d'une même matière pour une classe dans une seule journée.
-            </p>
-          </div>
-          
-          <input 
-            type="number" 
-            min="1" 
-            max="8" 
-            value={maxHours} 
-            onChange={e => setMaxHours(parseInt(e.target.value))}
-            style={{ width: "60px", padding: "0.5rem" }}
-          />
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            {/* Règle 1: Max Heures */}
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", background: "rgba(128,128,128,0.05)", padding: "1rem", borderRadius: "8px" }}>
+                <div style={{ flex: 1 }}>
+                    <strong>Limite journalière par matière</strong>
+                    <p style={{ margin: 0, fontSize: "0.8rem", opacity: 0.7 }}>
+                    Nombre maximum de créneaux d'une même matière par jour.
+                    </p>
+                </div>
+                <input 
+                    type="number" min="1" max="8" 
+                    value={maxHours} 
+                    onChange={e => setMaxHours(parseInt(e.target.value))}
+                    style={{ width: "60px", padding: "0.5rem" }}
+                />
+            </div>
+
+            {/* Règle 2: Consécutifs */}
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", background: "rgba(128,128,128,0.05)", padding: "1rem", borderRadius: "8px" }}>
+                <div style={{ flex: 1 }}>
+                    <strong>Autoriser les cours consécutifs</strong>
+                    <p style={{ margin: 0, fontSize: "0.8rem", opacity: 0.7 }}>
+                    Permet d'avoir 2h de la même matière à la suite (ex: 8h-10h).
+                    </p>
+                </div>
+                <input 
+                    type="checkbox" 
+                    checked={allowConsecutive} 
+                    onChange={e => setAllowConsecutive(e.target.checked)}
+                    style={{ width: "24px", height: "24px", cursor: "pointer" }}
+                />
+            </div>
         </div>
       </div>
 
@@ -67,7 +89,8 @@ export default function ConstraintsConfigurator() {
           borderRadius: "6px",
           cursor: "pointer",
           fontWeight: "bold",
-          transition: "background 0.3s"
+          transition: "background 0.3s",
+          width: "100%"
         }}
       >
         {saved ? "Sauvegardé !" : "Enregistrer la configuration"}

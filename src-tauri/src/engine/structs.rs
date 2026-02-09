@@ -5,11 +5,12 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug, Clone)]
 pub struct EngineInput {
     pub time_slots: Vec<u32>, // IDs des créneaux disponibles
-    pub slot_day_map: HashMap<u32, u32>, // SlotID -> DayIndex (pour contraintes journalières)
+    pub slot_day_map: HashMap<u32, u32>, // SlotID -> DayIndex
     pub allocations: Vec<AllocationToPlace>,
     
     // Configuration globale
     pub max_daily_hours_per_subject: i32,
+    pub allow_consecutive_subjects: bool, // NOUVEAU
 
     // Contraintes : TargetType_ID -> Set de SlotIDs interdits
     pub teacher_forbidden_slots: HashMap<i32, HashSet<u32>>,

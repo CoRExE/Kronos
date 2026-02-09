@@ -1,10 +1,18 @@
 use std::collections::HashMap;
 use crate::engine::structs::{EngineInput, ScheduleSolution, AllocationToPlace};
+use rand::seq::SliceRandom; // Pour le mélange
+use rand::thread_rng;
 
 pub fn solve(input: &EngineInput) -> Result<ScheduleSolution, String> {
-    let mut solution = HashMap::new(); // Map<Index dans input.allocations, SlotID>
+    let mut solution = HashMap::new(); 
     
-    if backtracking(0, &input, &mut solution) {
+    // HEURISTIQUE D'ÉQUILIBRAGE : On mélange les slots pour ne pas remplir 
+    // l'emploi du temps de gauche à droite (Lundi -> Vendredi).
+    let mut shuffled_slots = input.time_slots.clone();
+    let mut rng = thread_rng();
+    shuffled_slots.shuffle(&mut rng);
+
+    if backtracking(0, &input, &shuffled_slots, &mut solution) {
         let placements = solution.into_iter().map(|(idx, slot_id)| {
             let alloc = &input.allocations[idx];
             (alloc.id, slot_id)
@@ -19,6 +27,7 @@ pub fn solve(input: &EngineInput) -> Result<ScheduleSolution, String> {
 fn backtracking(
     alloc_idx: usize, 
     input: &EngineInput, 
+    slots: &Vec<u32>,
     solution: &mut HashMap<usize, u32>
 ) -> bool {
     if alloc_idx >= input.allocations.len() {
@@ -27,10 +36,10 @@ fn backtracking(
 
     let current_alloc = &input.allocations[alloc_idx];
 
-    for &slot_id in &input.time_slots {
+    for &slot_id in slots {
         if is_valid(slot_id, current_alloc, solution, input) {
             solution.insert(alloc_idx, slot_id);
-            if backtracking(alloc_idx + 1, input, solution) {
+            if backtracking(alloc_idx + 1, input, slots, solution) {
                 return true;
             }
             solution.remove(&alloc_idx);
@@ -47,27 +56,18 @@ fn is_valid(
     input: &EngineInput
 ) -> bool {
     // 1. Vérifier les interdictions (Contraintes directes)
-    
-    // Professeur indisponible ?
     if let Some(t_id) = alloc.teacher_id {
         if let Some(forbidden) = input.teacher_forbidden_slots.get(&t_id) {
-            if forbidden.contains(&target_slot) {
-                return false;
-            }
+            if forbidden.contains(&target_slot) { return false; }
         }
     }
-
-    // Groupe indisponible ?
     if let Some(forbidden) = input.group_forbidden_slots.get(&alloc.group_id) {
-        if forbidden.contains(&target_slot) {
-            return false;
-        }
+        if forbidden.contains(&target_slot) { return false; }
     }
 
-    // Récupérer le jour du créneau cible
     let target_day = match input.slot_day_map.get(&target_slot) {
         Some(&d) => d,
-        None => return false, // Should not happen
+        None => return false,
     };
 
     let mut same_subject_count_today = 0;
@@ -76,47 +76,39 @@ fn is_valid(
     for (&other_idx, &other_slot) in solution.iter() {
         let other_alloc = &input.allocations[other_idx];
 
-        // --- Conflits PHYSIQUES ---
+        // --- Conflit Temporel (Même heure) ---
         if other_slot == target_slot {
-            // Conflit GROUPE
-            if alloc.group_id == other_alloc.group_id {
-                return false;
-            }
-
-            // Conflit PROFESSEUR
+            if alloc.group_id == other_alloc.group_id { return false; }
             if let (Some(t1), Some(t2)) = (alloc.teacher_id, other_alloc.teacher_id) {
-                if t1 == t2 {
-                    return false;
-                }
+                if t1 == t2 { return false; }
             }
         }
 
-        // --- Contraintes PÉDAGOGIQUES (Même Groupe + Même Jour) ---
+        // --- Contraintes sur le même groupe ---
         if alloc.group_id == other_alloc.group_id {
-            // Récupérer le jour de l'autre créneau
             if let Some(&other_day) = input.slot_day_map.get(&other_slot) {
                 if other_day == target_day {
-                    // Si c'est la même matière
                     if alloc.subject_id == other_alloc.subject_id {
                         same_subject_count_today += 1;
+
+                        // --- CONTRAINTE DE CONSÉCUTIVITÉ ---
+                        if !input.allow_consecutive_subjects {
+                            // On vérifie si target_slot et other_slot sont adjacents
+                            // (On utilise la valeur absolue de la différence d'ID car les IDs sont chronologiques)
+                            let diff = (target_slot as i32 - other_slot as i32).abs();
+                            if diff == 1 {
+                                return false; // Trop proche !
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-        // LIMITATION : Max blocs de la même matière par jour par groupe
-
-        if same_subject_count_today >= input.max_daily_hours_per_subject {
-
-            return false;
-
-        }
-
-    
-
-        true
-
+    if same_subject_count_today >= input.max_daily_hours_per_subject {
+        return false;
     }
 
-    
+    true
+}
