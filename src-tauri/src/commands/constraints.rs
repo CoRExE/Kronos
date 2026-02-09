@@ -3,6 +3,36 @@ use rusqlite::OptionalExtension;
 use crate::AppState;
 use crate::models::Constraint;
 
+/// Récupère la limite globale d'heures par matière par jour.
+#[tauri::command]
+pub fn get_global_max_daily_hours(state: State<AppState>) -> Result<i32, String> {
+    let conn = state.db.lock().map_err(|_| "Failed to lock DB")?;
+    
+    let val: i32 = conn.query_row(
+        "SELECT value FROM project_config WHERE key = 'global_max_daily_subject_hours'",
+        [],
+        |row| {
+            let s: String = row.get(0)?;
+            Ok(s.parse::<i32>().unwrap_or(2))
+        }
+    ).unwrap_or(2); // Valeur par défaut : 2h
+
+    Ok(val)
+}
+
+/// Définit la limite globale.
+#[tauri::command]
+pub fn set_global_max_daily_hours(state: State<AppState>, hours: i32) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|_| "Failed to lock DB")?;
+    
+    conn.execute(
+        "INSERT OR REPLACE INTO project_config (key, value) VALUES ('global_max_daily_subject_hours', ?1)",
+        [hours.to_string()],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 /// Récupère toutes les contraintes d'un type pour une cible donnée.
 #[tauri::command]
 pub fn get_constraints(state: State<AppState>, target_type: String, target_id: i32) -> Result<Vec<Constraint>, String> {

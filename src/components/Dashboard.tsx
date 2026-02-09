@@ -9,6 +9,7 @@ import GroupsManager from "./GroupsManager";
 import TeachersManager from "./TeachersManager";
 import AllocationsManager from "./AllocationsManager";
 import TimeSlotsConfigurator from "./TimeSlotsConfigurator";
+import ConstraintsConfigurator from "./ConstraintsConfigurator";
 import GenerationPanel from "./GenerationPanel";
 
 export default function Dashboard() {
@@ -22,6 +23,7 @@ export default function Dashboard() {
       case "teachers": return <TeachersManager />;
       case "groups": return <GroupsManager />;
       case "allocations": return <AllocationsManager />;
+      case "rules": return <ConstraintsConfigurator />;
       case "generate": return <GenerationPanel />;
       default: return null;
     }
@@ -35,6 +37,7 @@ export default function Dashboard() {
       case "teachers": return "Gestion des Professeurs";
       case "groups": return "Gestion des Classes";
       case "allocations": return "Définition des Besoins";
+      case "rules": return "Règles & Contraintes";
       case "generate": return "Moteur de Génération";
       default: return "";
     }

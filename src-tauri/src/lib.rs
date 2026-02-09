@@ -121,6 +121,8 @@ pub fn run() {
             // Constraints
             constraints::get_constraints,
             constraints::toggle_forbidden_slot,
+            constraints::get_global_max_daily_hours,
+            constraints::set_global_max_daily_hours,
             // Generator & Schedule
             generator::generate_schedule,
             generator::get_scheduled_lessons

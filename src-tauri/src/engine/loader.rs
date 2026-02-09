@@ -3,22 +3,29 @@ use rusqlite::Connection;
 use crate::engine::structs::{EngineInput, AllocationToPlace};
 
 pub fn load_data(conn: &Connection) -> Result<EngineInput, String> {
-    // ... (1. Charger les slots)
-    let mut stmt = conn.prepare("SELECT id FROM time_slots ORDER BY id ASC").map_err(|e| e.to_string())?;
+    // 1. Charger les slots disponibles ET leur jour
+    let mut stmt = conn.prepare("SELECT id, day_index FROM time_slots ORDER BY id ASC").map_err(|e| e.to_string())?;
     let slots_iter = stmt.query_map([], |row| {
-        Ok(row.get::<_, u32>(0)?)
+        Ok((
+            row.get::<_, u32>(0)?, // id
+            row.get::<_, u32>(1)?  // day_index
+        ))
     }).map_err(|e| e.to_string())?;
 
     let mut time_slots = Vec::new();
-    for slot in slots_iter {
-        time_slots.push(slot.map_err(|e| e.to_string())?);
+    let mut slot_day_map = HashMap::new();
+
+    for slot_res in slots_iter {
+        let (id, day) = slot_res.map_err(|e| e.to_string())?;
+        time_slots.push(id);
+        slot_day_map.insert(id, day);
     }
 
     if time_slots.is_empty() {
         return Err("Aucun créneau horaire (Time Slot) défini.".to_string());
     }
 
-    // --- NOUVEAU : Charger les contraintes ---
+    // 2. Charger les contraintes d'indisponibilité
     let mut teacher_forbidden = HashMap::new();
     let mut group_forbidden = HashMap::new();
 
@@ -45,7 +52,7 @@ pub fn load_data(conn: &Connection) -> Result<EngineInput, String> {
         }
     }
 
-    // ... (2. Charger les allocations)
+    // 3. Charger les allocations
     let mut stmt = conn.prepare("SELECT id, group_id, subject_id, teacher_id, count FROM allocations").map_err(|e| e.to_string())?;
     let allocs_iter = stmt.query_map([], |row| {
         Ok((
@@ -65,10 +72,42 @@ pub fn load_data(conn: &Connection) -> Result<EngineInput, String> {
         }
     }
 
-    Ok(EngineInput {
-        time_slots,
-        allocations: allocations_to_place,
-        teacher_forbidden_slots: teacher_forbidden,
-        group_forbidden_slots: group_forbidden,
-    })
-}
+        // 4. Charger la config globale
+
+        let max_daily_hours: i32 = conn.query_row(
+
+            "SELECT value FROM project_config WHERE key = 'global_max_daily_subject_hours'",
+
+            [],
+
+            |row| {
+
+                let s: String = row.get(0)?;
+
+                Ok(s.parse::<i32>().unwrap_or(2))
+
+            }
+
+        ).unwrap_or(2);
+
+    
+
+        Ok(EngineInput {
+
+            time_slots,
+
+            slot_day_map,
+
+            allocations: allocations_to_place,
+
+            max_daily_hours_per_subject: max_daily_hours,
+
+            teacher_forbidden_slots: teacher_forbidden,
+
+            group_forbidden_slots: group_forbidden,
+
+        })
+
+    }
+
+    

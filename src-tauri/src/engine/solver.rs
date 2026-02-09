@@ -64,26 +64,59 @@ fn is_valid(
         }
     }
 
+    // Récupérer le jour du créneau cible
+    let target_day = match input.slot_day_map.get(&target_slot) {
+        Some(&d) => d,
+        None => return false, // Should not happen
+    };
+
+    let mut same_subject_count_today = 0;
+
     // 2. Vérifier les conflits avec les cours DÉJÀ placés
     for (&other_idx, &other_slot) in solution.iter() {
-        if other_slot != target_slot {
-            continue;
-        }
-
         let other_alloc = &input.allocations[other_idx];
 
-        // Conflit GROUPE
-        if alloc.group_id == other_alloc.group_id {
-            return false;
+        // --- Conflits PHYSIQUES ---
+        if other_slot == target_slot {
+            // Conflit GROUPE
+            if alloc.group_id == other_alloc.group_id {
+                return false;
+            }
+
+            // Conflit PROFESSEUR
+            if let (Some(t1), Some(t2)) = (alloc.teacher_id, other_alloc.teacher_id) {
+                if t1 == t2 {
+                    return false;
+                }
+            }
         }
 
-        // Conflit PROFESSEUR
-        if let (Some(t1), Some(t2)) = (alloc.teacher_id, other_alloc.teacher_id) {
-            if t1 == t2 {
-                return false;
+        // --- Contraintes PÉDAGOGIQUES (Même Groupe + Même Jour) ---
+        if alloc.group_id == other_alloc.group_id {
+            // Récupérer le jour de l'autre créneau
+            if let Some(&other_day) = input.slot_day_map.get(&other_slot) {
+                if other_day == target_day {
+                    // Si c'est la même matière
+                    if alloc.subject_id == other_alloc.subject_id {
+                        same_subject_count_today += 1;
+                    }
+                }
             }
         }
     }
 
-    true
-}
+        // LIMITATION : Max blocs de la même matière par jour par groupe
+
+        if same_subject_count_today >= input.max_daily_hours_per_subject {
+
+            return false;
+
+        }
+
+    
+
+        true
+
+    }
+
+    
