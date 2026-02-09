@@ -14,6 +14,7 @@ use commands::timeslots;
 use commands::teachers;
 use commands::allocations;
 use commands::generator;
+use commands::constraints;
 
 // Structure de l'état global pour partager la connexion BDD
 pub struct AppState {
@@ -117,6 +118,9 @@ pub fn run() {
             allocations::get_allocations,
             allocations::create_allocation,
             allocations::delete_allocation,
+            // Constraints
+            constraints::get_constraints,
+            constraints::toggle_forbidden_slot,
             // Generator & Schedule
             generator::generate_schedule,
             generator::get_scheduled_lessons

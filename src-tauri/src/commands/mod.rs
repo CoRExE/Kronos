@@ -4,3 +4,4 @@ pub mod timeslots;
 pub mod teachers;
 pub mod allocations;
 pub mod generator;
+pub mod constraints;

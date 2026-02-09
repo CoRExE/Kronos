@@ -1,9 +1,16 @@
 // Structures optimisées pour le calcul (In-Memory)
 
+use std::collections::HashSet;
+
 #[derive(Debug, Clone)]
 pub struct EngineInput {
     pub time_slots: Vec<u32>, // IDs des créneaux disponibles
     pub allocations: Vec<AllocationToPlace>,
+    
+    // Contraintes : TargetType_ID -> Set de SlotIDs interdits
+    // On utilisera une clé composite ou deux maps distinctes pour simplifier
+    pub teacher_forbidden_slots: std::collections::HashMap<i32, HashSet<u32>>,
+    pub group_forbidden_slots: std::collections::HashMap<i32, HashSet<u32>>,
 }
 
 #[allow(dead_code)]

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import AvailabilityPicker from "./AvailabilityPicker";
 
 interface StudentGroup {
   id: number;
@@ -10,12 +11,12 @@ interface StudentGroup {
 export default function GroupsManager() {
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [loading, setLoading] = useState(false);
-
-  // Form state
   const [name, setName] = useState("");
-  const [headCount, setHeadCount] = useState(30); // Par défaut
+  const [headCount, setHeadCount] = useState(30);
+  
+  // État pour la sélection des disponibilités
+  const [selectedGroup, setSelectedGroup] = useState<StudentGroup | null>(null);
 
-  // Charger la liste
   async function fetchGroups() {
     try {
       setLoading(true);
@@ -28,7 +29,6 @@ export default function GroupsManager() {
     }
   }
 
-  // Créer un groupe
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!name) return;
@@ -36,29 +36,20 @@ export default function GroupsManager() {
     try {
       await invoke("create_group", { 
         name, 
-        headCount: Number(headCount) // Conversion explicite
+        headCount: Number(headCount)
       });
-      
-      // Reset form
       setName("");
       setHeadCount(30);
-      
-      // Reload list
       fetchGroups();
     } catch (err) {
       alert("Erreur création: " + err);
     }
   }
 
-  // Supprimer
   async function handleDelete(id: number) {
-    // Note: window.confirm ne fonctionne pas dans Tauri v2. 
-    // On passera par une confirmation interne plus tard.
-    // if (!confirm("Voulez-vous vraiment supprimer ce groupe ?")) return;
-    
     try {
-      // On utilise la syntaxe explicite qui fonctionne :)
       await invoke("delete_group", { id: id });
+      if (selectedGroup?.id === id) setSelectedGroup(null);
       fetchGroups();
     } catch (err) {
       console.error("Erreur backend suppression:", err);
@@ -74,72 +65,80 @@ export default function GroupsManager() {
     <div style={{ padding: "1rem", border: "1px solid rgba(128,128,128,0.3)", borderRadius: "8px", marginTop: "1rem" }}>
       <h2>🎓 Gestion des Groupes / Classes</h2>
 
-      {/* Formulaire d'ajout */}
-      <form onSubmit={handleCreate} style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", alignItems: "center", flexWrap: "wrap" }}>
-        <input 
-          type="text" 
-          placeholder="Nom (ex: CM2-A, 6ème B)" 
-          value={name} 
-          onChange={e => setName(e.target.value)} 
-          required 
-          style={{ padding: "0.6rem", flex: 1, minWidth: "200px" }}
-        />
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <label style={{ fontSize: "0.9rem", opacity: 0.8 }}>Effectif:</label>
-          <input 
-            type="number" 
-            min="1"
-            max="100"
-            value={headCount} 
-            onChange={e => setHeadCount(parseInt(e.target.value))} 
-            style={{ padding: "0.6rem", width: "80px" }}
-          />
+      {selectedGroup ? (
+        <div style={{ marginBottom: "2rem" }}>
+            <button 
+                onClick={() => setSelectedGroup(null)}
+                style={{ marginBottom: "1rem", fontSize: "0.8rem", padding: "4px 8px" }}
+            >
+                ← Retour à la liste
+            </button>
+            <AvailabilityPicker 
+                targetType="GROUP" 
+                targetId={selectedGroup.id} 
+                targetName={selectedGroup.name} 
+            />
         </div>
-        
-        <button type="submit" style={{ padding: "0.6rem 1.2rem", cursor: "pointer" }}>
-          Ajouter
-        </button>
-      </form>
-
-      {/* Liste */}
-      {loading ? (
-        <p>Chargement...</p>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          {groups.map(group => (
-            <li key={group.id} style={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center",
-              padding: "0.8rem",
-              border: "1px solid rgba(128,128,128,0.2)",
-              borderRadius: "6px",
-              background: "rgba(128, 128, 128, 0.05)"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                <span style={{ fontSize: "1.1rem", fontWeight: "500" }}>{group.name}</span>
-                <span style={{ opacity: 0.7, fontSize: "0.9em", background: "rgba(128,128,128,0.1)", padding: "2px 6px", borderRadius: "4px" }}>
-                  👥 {group.head_count} élèves
-                </span>
-              </div>
-              
-              <button 
-                onClick={() => handleDelete(group.id)} 
-                title="Supprimer"
-                style={{ 
-                    color: "#ff4d4d", 
-                    borderColor: "#ff4d4d", 
-                    background: "transparent", 
-                    cursor: "pointer",
-                    padding: "0.4rem 0.8rem",
-                    fontSize: "0.9rem"
-                }}>
-                Supprimer
-              </button>
-            </li>
-          ))}
-          {groups.length === 0 && <p style={{ opacity: 0.6, fontStyle: "italic", textAlign: "center" }}>Aucun groupe défini pour l'instant.</p>}
-        </ul>
+        <>
+            <form onSubmit={handleCreate} style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                <input 
+                type="text" 
+                placeholder="Nom (ex: CM2-A)" 
+                value={name} 
+                onChange={e => setName(e.target.value)} 
+                required 
+                style={{ padding: "0.6rem", flex: 1, minWidth: "200px" }}
+                />
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <label style={{ fontSize: "0.9rem", opacity: 0.8 }}>Effectif:</label>
+                <input 
+                    type="number" 
+                    value={headCount} 
+                    onChange={e => setHeadCount(parseInt(e.target.value))} 
+                    style={{ padding: "0.6rem", width: "80px" }}
+                />
+                </div>
+                <button type="submit" style={{ padding: "0.6rem 1.2rem", cursor: "pointer" }}>
+                Ajouter
+                </button>
+            </form>
+
+            {loading ? (
+                <p>Chargement...</p>
+            ) : (
+                <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                {groups.map(group => (
+                    <li key={group.id} style={{ 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "center",
+                    padding: "0.8rem",
+                    border: "1px solid rgba(128,128,128,0.2)",
+                    borderRadius: "6px",
+                    background: "rgba(128, 128, 128, 0.05)"
+                    }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <span style={{ fontSize: "1.1rem", fontWeight: "500" }}>{group.name}</span>
+                        <span style={{ opacity: 0.7, fontSize: "0.8em" }}>👥 {group.head_count}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <button 
+                            onClick={() => setSelectedGroup(group)}
+                            style={{ background: "rgba(100, 108, 255, 0.2)", border: "1px solid #646cff" }}
+                        >
+                            📅 Dispos
+                        </button>
+                        <button onClick={() => handleDelete(group.id)} style={{ color: "#ff4d4d", background: "transparent" }}>
+                            Supprimer
+                        </button>
+                    </div>
+                    </li>
+                ))}
+                {groups.length === 0 && <p style={{ opacity: 0.6, fontStyle: "italic", textAlign: "center" }}>Aucun groupe défini.</p>}
+                </ul>
+            )}
+        </>
       )}
     </div>
   );
