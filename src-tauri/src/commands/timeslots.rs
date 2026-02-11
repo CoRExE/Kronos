@@ -69,29 +69,38 @@ pub fn get_time_slots(state: State<AppState>) -> Result<Vec<TimeSlot>, String> {
 }
 
 /// Génère la grille complète en fonction des règles fournies.
-/// ATTENTION : Cela efface la grille existante !
+/// break_duration_minutes permet de laisser un vide entre chaque cours.
 #[tauri::command]
-pub fn generate_time_slots(state: State<AppState>, rules: Vec<GenerationRule>, slot_duration_minutes: i32) -> Result<(), String> {
+pub fn generate_time_slots(
+    state: State<AppState>, 
+    rules: Vec<GenerationRule>, 
+    slot_duration_minutes: i32,
+    break_duration_minutes: i32 // NOUVEAU
+) -> Result<(), String> {
     let mut conn = state.db.lock().map_err(|_| "Failed to lock DB")?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
-    // 1. Sauvegarder la durée du slot
+    // 1. Sauvegarder les durées
     tx.execute(
         "INSERT OR REPLACE INTO project_config (key, value) VALUES ('slot_duration', ?1)",
         [slot_duration_minutes.to_string()],
     ).map_err(|e| e.to_string())?;
 
+    tx.execute(
+        "INSERT OR REPLACE INTO project_config (key, value) VALUES ('break_duration', ?1)",
+        [break_duration_minutes.to_string()],
+    ).map_err(|e| e.to_string())?;
+
     // 2. Effacer les slots existants
-    // TODO: Gérer le cas où des cours sont déjà planifiés dessus (cascade delete ou warning)
     tx.execute("DELETE FROM time_slots", []).map_err(|e| e.to_string())?;
 
     // 3. Générer les nouveaux slots
     for rule in rules {
-        // Parsing simple de l'heure "HH:MM" -> minutes depuis minuit
         let start_min = parse_time(&rule.start_time)?;
         let end_min = parse_time(&rule.end_time)?;
         
         let mut current = start_min;
+        // On boucle tant qu'on peut caler un cours
         while current + slot_duration_minutes <= end_min {
             let s_time = format_time(current);
             let e_time = format_time(current + slot_duration_minutes);
@@ -101,13 +110,12 @@ pub fn generate_time_slots(state: State<AppState>, rules: Vec<GenerationRule>, s
                 rusqlite::params![rule.day_index, s_time, e_time, rule.slot_type],
             ).map_err(|e| e.to_string())?;
 
-            current += slot_duration_minutes;
+            // On avance du (cours + intercours)
+            current += slot_duration_minutes + break_duration_minutes;
         }
     }
 
     tx.commit().map_err(|e| e.to_string())?;
-    
-    println!("✅ Grille générée avec succès.");
     Ok(())
 }
 

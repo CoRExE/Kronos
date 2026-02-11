@@ -100,19 +100,22 @@ export default function AllocationsManager() {
       {/* Formulaire d'ajout */}
       <form onSubmit={handleCreate} style={{ 
         display: "grid", 
-        gridTemplateColumns: "1fr 1fr 1fr 80px auto", 
-        gap: "0.5rem", 
-        marginBottom: "1.5rem", 
-        alignItems: "end" 
+        gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", 
+        gap: "1rem", 
+        marginBottom: "2rem", 
+        alignItems: "end",
+        background: "rgba(128,128,128,0.05)",
+        padding: "1rem",
+        borderRadius: "8px"
       }}>
         
         {/* Groupe */}
-        <label>
-          <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>Groupe</span>
+        <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <span style={{ fontSize: "0.8rem", fontWeight: "bold", opacity: 0.8 }}>Groupe</span>
           <select 
             value={selectedGroup} 
             onChange={e => setSelectedGroup(e.target.value)}
-            style={{ width: "100%", padding: "0.5rem" }}
+            style={{ padding: "0.6rem", borderRadius: "4px", border: "1px solid rgba(128,128,128,0.3)" }}
             required
           >
             <option value="">-- Choisir --</option>
@@ -121,12 +124,12 @@ export default function AllocationsManager() {
         </label>
 
         {/* Matière */}
-        <label>
-          <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>Matière</span>
+        <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <span style={{ fontSize: "0.8rem", fontWeight: "bold", opacity: 0.8 }}>Matière</span>
           <select 
             value={selectedSubject} 
             onChange={e => setSelectedSubject(e.target.value)}
-            style={{ width: "100%", padding: "0.5rem" }}
+            style={{ padding: "0.6rem", borderRadius: "4px", border: "1px solid rgba(128,128,128,0.3)" }}
             required
           >
             <option value="">-- Choisir --</option>
@@ -135,12 +138,12 @@ export default function AllocationsManager() {
         </label>
 
         {/* Professeur (Optionnel) */}
-        <label>
-          <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>Prof. (Optionnel)</span>
+        <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <span style={{ fontSize: "0.8rem", fontWeight: "bold", opacity: 0.8 }}>Prof. (Optionnel)</span>
           <select 
             value={selectedTeacher} 
             onChange={e => setSelectedTeacher(e.target.value)}
-            style={{ width: "100%", padding: "0.5rem" }}
+            style={{ padding: "0.6rem", borderRadius: "4px", border: "1px solid rgba(128,128,128,0.3)" }}
           >
             <option value="">-- Aucun --</option>
             {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -148,19 +151,29 @@ export default function AllocationsManager() {
         </label>
 
         {/* Heures */}
-        <label>
-          <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>Heures</span>
+        <label style={{ display: "flex", flexDirection: "column", gap: "4px", maxWidth: "80px" }}>
+          <span style={{ fontSize: "0.8rem", fontWeight: "bold", opacity: 0.8 }}>Heures</span>
           <input 
             type="number" 
             min="1" 
             max="20" 
             value={count} 
             onChange={e => setCount(parseInt(e.target.value))}
-            style={{ width: "100%", padding: "0.5rem" }}
+            style={{ padding: "0.6rem", borderRadius: "4px", border: "1px solid rgba(128,128,128,0.3)" }}
           />
         </label>
 
-        <button type="submit" style={{ padding: "0.6rem 1rem", height: "38px", cursor: "pointer", backgroundColor: "#646cff", color: "white", border: "none", borderRadius: "4px" }}>
+        <button type="submit" style={{ 
+            padding: "0.6rem 1.5rem", 
+            height: "42px", 
+            cursor: "pointer", 
+            backgroundColor: "#646cff", 
+            color: "white", 
+            border: "none", 
+            borderRadius: "6px",
+            fontWeight: "bold",
+            transition: "all 0.2s"
+        }}>
           Ajouter
         </button>
       </form>
