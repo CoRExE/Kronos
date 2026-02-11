@@ -5,3 +5,4 @@ pub mod teachers;
 pub mod allocations;
 pub mod generator;
 pub mod constraints;
+pub mod rooms;

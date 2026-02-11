@@ -11,6 +11,7 @@ import AllocationsManager from "./AllocationsManager";
 import TimeSlotsConfigurator from "./TimeSlotsConfigurator";
 import ConstraintsConfigurator from "./ConstraintsConfigurator";
 import GenerationPanel from "./GenerationPanel";
+import RoomsManager from "./RoomsManager";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<string | null>(null);
@@ -22,6 +23,7 @@ export default function Dashboard() {
       case "subjects": return <SubjectsManager />;
       case "teachers": return <TeachersManager />;
       case "groups": return <GroupsManager />;
+      case "rooms": return <RoomsManager />;
       case "allocations": return <AllocationsManager />;
       case "rules": return <ConstraintsConfigurator />;
       case "generate": return <GenerationPanel />;
@@ -36,6 +38,7 @@ export default function Dashboard() {
       case "subjects": return "Gestion des Matières";
       case "teachers": return "Gestion des Professeurs";
       case "groups": return "Gestion des Classes";
+      case "rooms": return "Gestion des Salles";
       case "allocations": return "Définition des Besoins";
       case "rules": return "Règles & Contraintes";
       case "generate": return "Moteur de Génération";

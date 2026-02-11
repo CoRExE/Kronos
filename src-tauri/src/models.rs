@@ -22,6 +22,14 @@ pub struct Teacher {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct Room {
+    pub id: Option<i32>,
+    pub name: String,
+    pub capacity: i32,
+    pub room_type: String, // 'STANDARD', 'LABO', etc.
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TimeSlot {
     pub id: Option<i32>,
     pub day_index: i32,

@@ -9,6 +9,7 @@ export default function Sidebar({ onSelect, activeTab }: SidebarProps) {
     { id: "subjects", label: "📚 Matières", icon: "📘" },
     { id: "teachers", label: "👨‍🏫 Profs", icon: "🎓" },
     { id: "groups", label: "🎓 Classes", icon: "👥" },
+    { id: "rooms", label: "🏛️ Salles", icon: "🏛️" },
     { id: "allocations", label: "🔗 Besoins", icon: "Link" },
     { id: "rules", label: "⚖️ Règles", icon: "Scale" },
     { id: "generate", label: "🚀 Moteur", icon: "⚡" },

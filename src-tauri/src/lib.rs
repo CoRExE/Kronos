@@ -15,6 +15,7 @@ use commands::teachers;
 use commands::allocations;
 use commands::generator;
 use commands::constraints;
+use commands::rooms;
 
 // Structure de l'état global pour partager la connexion BDD
 pub struct AppState {
@@ -125,6 +126,11 @@ pub fn run() {
             constraints::set_global_max_daily_hours,
             constraints::get_allow_consecutive_subjects,
             constraints::set_allow_consecutive_subjects,
+            // Rooms
+            rooms::get_all_rooms,
+            rooms::create_room,
+            rooms::update_room,
+            rooms::delete_room,
             // Generator & Schedule
             generator::generate_schedule,
             generator::get_scheduled_lessons
