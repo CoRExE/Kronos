@@ -23,10 +23,10 @@ pub fn run_generation(conn: &mut Connection) -> Result<(), String> {
     tx.execute("DELETE FROM scheduled_lessons", []).map_err(|e| e.to_string())?;
 
     // Insérer les nouveaux cours
-    let mut stmt = tx.prepare("INSERT INTO scheduled_lessons (allocation_id, slot_id) VALUES (?1, ?2)").map_err(|e| e.to_string())?;
+    let mut stmt = tx.prepare("INSERT INTO scheduled_lessons (allocation_id, slot_id, room_id) VALUES (?1, ?2, ?3)").map_err(|e| e.to_string())?;
     
-    for (alloc_id, slot_id) in solution.placements {
-        stmt.execute(rusqlite::params![alloc_id, slot_id]).map_err(|e| e.to_string())?;
+    for (alloc_id, slot_id, room_id) in solution.placements {
+        stmt.execute(rusqlite::params![alloc_id, slot_id, room_id]).map_err(|e| e.to_string())?;
     }
     drop(stmt); // Libérer le statement pour pouvoir commit
 
