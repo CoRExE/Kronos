@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 pub struct EngineInput {
     pub time_slots: Vec<u32>, 
     pub slot_day_map: HashMap<u32, u32>, 
-    pub rooms: Vec<u32>, // IDs des salles
+    pub rooms: Vec<(u32, String)>, // (ID, Type)
     pub allocations: Vec<AllocationToPlace>,
     
     // Configuration globale
@@ -25,6 +25,7 @@ pub struct AllocationToPlace {
     pub group_id: i32,
     pub teacher_id: Option<i32>,
     pub subject_id: i32,
+    pub required_room_type: String,
 }
 
 #[derive(Debug, Clone)]

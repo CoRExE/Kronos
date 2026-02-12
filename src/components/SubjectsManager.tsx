@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
-// On type la structure que le Rust nous renvoie (voir models.rs)
 interface Subject {
   id: number;
   name: string;
   short_code?: string | null;
   color: string;
+  required_room_type: string;
 }
+
+const ROOM_TYPES = ["STANDARD", "LABO", "INFO", "GYM", "AMPHI"];
 
 export default function SubjectsManager() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -17,21 +19,18 @@ export default function SubjectsManager() {
   const [name, setName] = useState("");
   const [shortCode, setShortCode] = useState("");
   const [color, setColor] = useState("#3b82f6");
+  const [roomType, setRoomType] = useState("STANDARD");
 
-  // Charger la liste
+  useEffect(() => { fetchSubjects(); }, []);
+
   async function fetchSubjects() {
     try {
       setLoading(true);
       const data = await invoke<Subject[]>("get_all_subjects");
       setSubjects(data);
-    } catch (err) {
-      console.error("Failed to fetch subjects:", err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   }
 
-  // Créer une matière
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!name) return;
@@ -40,115 +39,58 @@ export default function SubjectsManager() {
       await invoke("create_subject", { 
         name, 
         shortCode: shortCode || null, 
-        color 
+        color,
+        requiredRoomType: roomType
       });
-      
-      // Reset form
-      setName("");
-      setShortCode("");
-      setColor("#3b82f6");
-      
-      // Reload list
+      setName(""); setShortCode(""); setRoomType("STANDARD");
       fetchSubjects();
-    } catch (err) {
-      alert("Erreur création: " + err);
-    }
+    } catch (err) { alert("Erreur: " + err); }
   }
 
-  // Supprimer
   async function handleDelete(id: number) {
     try {
-      await invoke('delete_subject', { id });
-      await fetchSubjects();
-    } catch (error) {
-      alert(`Erreur: ${error}`);
-    }
-  };
-
-  useEffect(() => {
-    fetchSubjects();
-  }, []);
+      await invoke("delete_subject", { id });
+      fetchSubjects();
+    } catch (err) { alert(err); }
+  }
 
   return (
     <div style={{ padding: "1rem", border: "1px solid rgba(128,128,128,0.3)", borderRadius: "8px", marginTop: "1rem" }}>
       <h2>📚 Gestion des Matières</h2>
 
-      {/* Formulaire d'ajout */}
-      <form onSubmit={handleCreate} style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", alignItems: "center", flexWrap: "wrap" }}>
-        <input 
-          type="text" 
-          placeholder="Nom (ex: Mathématiques)" 
-          value={name} 
-          onChange={e => setName(e.target.value)} 
-          required 
-          style={{ padding: "0.6rem", flex: 1, minWidth: "200px" }}
-        />
-        <input 
-          type="text" 
-          placeholder="Code (ex: MATH)" 
-          value={shortCode} 
-          onChange={e => setShortCode(e.target.value)} 
-          style={{ padding: "0.6rem", width: "100px" }}
-        />
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", border: "1px solid #ccc", padding: "4px", borderRadius: "4px" }}>
-            <input 
-            type="color" 
-            value={color} 
-            onChange={e => setColor(e.target.value)} 
-            title="Couleur"
-            style={{ height: "30px", width: "30px", padding: 0, border: "none", background: "none", cursor: "pointer" }}
-            />
+      <form onSubmit={handleCreate} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "2rem", alignItems: "end", background: "rgba(128,128,128,0.05)", padding: "1rem", borderRadius: "8px" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>Nom</span>
+          <input type="text" placeholder="Maths" value={name} onChange={e => setName(e.target.value)} required style={{ padding: "0.6rem" }} />
+        </label>
+        <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>Code</span>
+          <input type="text" placeholder="MATH" value={shortCode} onChange={e => setShortCode(e.target.value)} style={{ padding: "0.6rem" }} />
+        </label>
+        <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>Salle Requise</span>
+          <select value={roomType} onChange={e => setRoomType(e.target.value)} style={{ padding: "0.6rem" }}>
+            {ROOM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <input type="color" value={color} onChange={e => setColor(e.target.value)} style={{ height: "40px", border: "none" }} />
+            <button type="submit" style={{ flex: 1, padding: "0.6rem", background: "#646cff", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}>Ajouter</button>
         </div>
-        
-        <button type="submit" style={{ padding: "0.6rem 1.2rem", cursor: "pointer" }}>
-          Ajouter
-        </button>
       </form>
 
-      {/* Liste */}
-      {loading ? (
-        <p>Chargement...</p>
-      ) : (
+      {loading ? <p>Chargement...</p> : (
         <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           {subjects.map(sub => (
-            <li key={sub.id} style={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center",
-              padding: "0.8rem",
-              border: "1px solid rgba(128,128,128,0.2)",
-              borderRadius: "6px",
-              background: "rgba(128, 128, 128, 0.05)" // Légèrement grisé, marche en dark/light
-            }}>
+            <li key={sub.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.8rem", border: "1px solid rgba(128,128,128,0.2)", borderRadius: "6px", background: "rgba(128, 128, 128, 0.05)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                <span style={{ 
-                  display: "inline-block", 
-                  width: "18px", 
-                  height: "18px", 
-                  borderRadius: "50%", 
-                  backgroundColor: sub.color,
-                  border: "1px solid rgba(255,255,255,0.2)"
-                }}></span>
-                <span style={{ fontSize: "1.1rem", fontWeight: "500" }}>{sub.name}</span>
-                {sub.short_code && <span style={{ opacity: 0.7, fontSize: "0.9em" }}>({sub.short_code})</span>}
+                <span style={{ width: "16px", height: "16px", borderRadius: "50%", backgroundColor: sub.color }}></span>
+                <strong>{sub.name}</strong>
+                <span style={{ fontSize: "0.8rem", opacity: 0.6 }}>[{sub.required_room_type}]</span>
               </div>
-              
-              <button 
-                onClick={() => handleDelete(sub.id)} 
-                title="Supprimer"
-                style={{ 
-                    color: "#ff4d4d", 
-                    borderColor: "#ff4d4d", 
-                    background: "transparent", 
-                    cursor: "pointer",
-                    padding: "0.4rem 0.8rem",
-                    fontSize: "0.9rem"
-                }}>
-                Supprimer
-              </button>
+              <button onClick={() => handleDelete(sub.id)} style={{ color: "#ff4d4d", background: "transparent" }}>Supprimer</button>
             </li>
           ))}
-          {subjects.length === 0 && <p style={{ opacity: 0.6, fontStyle: "italic", textAlign: "center" }}>Aucune matière définie pour l'instant.</p>}
         </ul>
       )}
     </div>

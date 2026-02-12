@@ -26,7 +26,7 @@ pub struct Room {
     pub id: Option<i32>,
     pub name: String,
     pub capacity: i32,
-    pub room_type: String, // 'STANDARD', 'LABO', etc.
+    pub room_type: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,6 +45,7 @@ pub struct Allocation {
     pub subject_id: i32,
     pub teacher_id: Option<i32>,
     pub count: i32,
+    pub required_room_type: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -55,6 +56,7 @@ pub struct AllocationView {
     pub teacher_name: Option<String>,
     pub subject_color: String,
     pub count: i32,
+    pub required_room_type: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -63,13 +65,13 @@ pub struct ScheduledLessonView {
     pub day_index: i32,
     pub start_time: String,
     pub end_time: String,
-    pub group_id: i32, // NOUVEAU
+    pub group_id: i32,
     pub group_name: String,
     pub subject_name: String,
-    pub teacher_id: Option<i32>, // NOUVEAU
+    pub teacher_id: Option<i32>,
     pub teacher_name: Option<String>,
     pub subject_color: String,
-    pub room_id: Option<i32>, // NOUVEAU
+    pub room_id: Option<i32>,
     pub room_name: Option<String>,
 }
 
