@@ -6,10 +6,7 @@ interface Subject {
   name: string;
   short_code?: string | null;
   color: string;
-  required_room_type: string;
 }
-
-const ROOM_TYPES = ["STANDARD", "LABO", "INFO", "GYM", "AMPHI"];
 
 export default function SubjectsManager() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -19,7 +16,6 @@ export default function SubjectsManager() {
   const [name, setName] = useState("");
   const [shortCode, setShortCode] = useState("");
   const [color, setColor] = useState("#3b82f6");
-  const [roomType, setRoomType] = useState("STANDARD");
 
   useEffect(() => { fetchSubjects(); }, []);
 
@@ -39,10 +35,9 @@ export default function SubjectsManager() {
       await invoke("create_subject", { 
         name, 
         shortCode: shortCode || null, 
-        color,
-        requiredRoomType: roomType
+        color
       });
-      setName(""); setShortCode(""); setRoomType("STANDARD");
+      setName(""); setShortCode("");
       fetchSubjects();
     } catch (err) { alert("Erreur: " + err); }
   }
@@ -67,12 +62,6 @@ export default function SubjectsManager() {
           <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>Code</span>
           <input type="text" placeholder="MATH" value={shortCode} onChange={e => setShortCode(e.target.value)} style={{ padding: "0.6rem" }} />
         </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <span style={{ fontSize: "0.8rem", fontWeight: "bold" }}>Salle Requise</span>
-          <select value={roomType} onChange={e => setRoomType(e.target.value)} style={{ padding: "0.6rem" }}>
-            {ROOM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </label>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <input type="color" value={color} onChange={e => setColor(e.target.value)} style={{ height: "40px", border: "none" }} />
             <button type="submit" style={{ flex: 1, padding: "0.6rem", background: "#646cff", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}>Ajouter</button>
@@ -86,9 +75,9 @@ export default function SubjectsManager() {
               <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                 <span style={{ width: "16px", height: "16px", borderRadius: "50%", backgroundColor: sub.color }}></span>
                 <strong>{sub.name}</strong>
-                <span style={{ fontSize: "0.8rem", opacity: 0.6 }}>[{sub.required_room_type}]</span>
+                {sub.short_code && <span style={{ opacity: 0.6, fontSize: "0.9rem" }}>({sub.short_code})</span>}
               </div>
-              <button onClick={() => handleDelete(sub.id)} style={{ color: "#ff4d4d", background: "transparent" }}>Supprimer</button>
+              <button onClick={() => handleDelete(sub.id)} style={{ color: "#ff4d4d", background: "transparent", border: "none", cursor: "pointer" }}>Supprimer</button>
             </li>
           ))}
         </ul>
