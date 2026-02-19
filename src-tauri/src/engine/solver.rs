@@ -3,55 +3,87 @@ use crate::engine::structs::{EngineInput, ScheduleSolution, AllocationToPlace};
 use rand::seq::SliceRandom; 
 use rand::thread_rng;
 
+/// Type interne pour une solution temporaire (Map d'index -> (SlotID, RoomID))
+type RawSolution = HashMap<usize, (u32, u32)>;
+
 pub fn solve(input: &EngineInput) -> Result<ScheduleSolution, String> {
-    let mut solution = HashMap::new(); 
-    
-    // 1. HEURISTIQUE DE TRI (Fail-First)
-    // On trie les allocations de la plus "difficile" à la plus "facile"
-    let mut sorted_allocs = input.allocations.clone();
-    sorted_allocs.sort_by(|a, b| {
-        let score_a = calculate_difficulty(a, input);
-        let score_b = calculate_difficulty(b, input);
-        score_b.cmp(&score_a) // Décroissant (plus dur en premier)
-    });
+    let mut best_solution: Option<RawSolution> = None;
+    let mut best_score = i32::MAX;
 
-    // 2. HEURISTIQUE DE RÉPARTITION (Shuffle des slots)
-    let mut shuffled_slots = input.time_slots.clone();
-    let mut rng = thread_rng();
-    shuffled_slots.shuffle(&mut rng);
+    // On lance la recherche 5 fois pour trouver la version la plus "confortable"
+    // (Grâce au shuffle aléatoire, chaque itération donnera un résultat différent)
+    for _ in 0..5 {
+        let mut current_solution = HashMap::new(); 
+        let mut shuffled_slots = input.time_slots.clone();
+        let mut rng = thread_rng();
+        shuffled_slots.shuffle(&mut rng);
 
-    if backtracking(0, &sorted_allocs, &shuffled_slots, &input, &mut solution) {
-        let placements = solution.into_iter().map(|(idx, (slot_id, room_id))| {
-            let alloc = &sorted_allocs[idx];
+        if backtracking(0, &input.allocations, &shuffled_slots, &input, &mut current_solution) {
+            let score = calculate_comfort_score(&current_solution, &input);
+            
+            if score < best_score {
+                best_score = score;
+                best_solution = Some(current_solution);
+            }
+        }
+    }
+
+    if let Some(final_raw) = best_solution {
+        println!("✨ Meilleure solution trouvée avec un score de confort de : {} (trous)", best_score);
+        
+        let placements = final_raw.into_iter().map(|(idx, (slot_id, room_id))| {
+            let alloc = &input.allocations[idx];
             (alloc.id, slot_id, room_id)
         }).collect();
         Ok(ScheduleSolution { placements })
     } else {
-        Err("Impossible de trouver un emploi du temps valide. Essayez d'ajouter des salles ou de libérer des créneaux.".to_string())
+        Err("Impossible de trouver un emploi du temps valide.".to_string())
     }
 }
 
-/// Calcule un score de difficulté pour une allocation (Heuristique MCV)
-fn calculate_difficulty(alloc: &AllocationToPlace, input: &EngineInput) -> i32 {
-    let mut score = 0;
+/// Calcule le nombre de "trous" (heures creuses) dans l'emploi du temps des professeurs.
+/// Plus le score est bas, meilleur est l'emploi du temps.
+fn calculate_comfort_score(solution: &RawSolution, input: &EngineInput) -> i32 {
+    let mut holes = 0;
 
-    // A. Rareté de la salle (Plus il y a de salles de ce type, moins c'est dur)
-    let room_count = input.rooms.iter().filter(|(_, t)| t == &alloc.required_room_type).count() as i32;
-    score += (10 - room_count) * 10; // Max 100 points
+    // On regroupe les cours par PROFESSEUR et par JOUR
+    // Map<TeacherID, Map<DayIndex, Vec<SlotID>>>
+    let mut teacher_days: HashMap<i32, HashMap<u32, Vec<u32>>> = HashMap::new();
 
-    // B. Indisponibilité du Professeur
-    if let Some(t_id) = alloc.teacher_id {
-        if let Some(forbidden) = input.teacher_forbidden_slots.get(&t_id) {
-            score += (forbidden.len() as i32) * 5; // 5 pts par créneau interdit
+    for (&alloc_idx, &(slot_id, _)) in solution.iter() {
+        let alloc = &input.allocations[alloc_idx];
+        if let Some(t_id) = alloc.teacher_id {
+            let day = *input.slot_day_map.get(&slot_id).unwrap_or(&0);
+            teacher_days
+                .entry(t_id)
+                .or_insert_with(HashMap::new)
+                .entry(day)
+                .or_insert_with(Vec::new)
+                .push(slot_id);
         }
     }
 
-    // C. Indisponibilité du Groupe
-    if let Some(forbidden) = input.group_forbidden_slots.get(&alloc.group_id) {
-        score += (forbidden.len() as i32) * 5;
+    // Pour chaque prof, chaque jour, on compte les sauts d'ID de créneaux
+    for days in teacher_days.values() {
+        for slots in days.values() {
+            if slots.len() < 2 { continue; }
+            
+            let mut sorted_slots = slots.clone();
+            sorted_slots.sort();
+
+            // Un trou est détecté si la différence entre deux IDs de créneaux consécutifs
+            // est supérieure à 1 (en supposant que les IDs en BDD se suivent chronologiquement).
+            for i in 0..sorted_slots.len() - 1 {
+                let diff = sorted_slots[i+1] as i32 - sorted_slots[i] as i32;
+                if diff > 1 {
+                    // On ajoute la pénalité proportionnelle à la taille du trou
+                    holes += diff - 1;
+                }
+            }
+        }
     }
 
-    score
+    holes
 }
 
 fn backtracking(
@@ -59,7 +91,7 @@ fn backtracking(
     allocs: &Vec<AllocationToPlace>,
     slots: &Vec<u32>,
     input: &EngineInput,
-    solution: &mut HashMap<usize, (u32, u32)>
+    solution: &mut RawSolution
 ) -> bool {
     if alloc_idx >= allocs.len() { return true; }
     let current_alloc = &allocs[alloc_idx];
@@ -83,11 +115,10 @@ fn is_valid(
     target_room: u32,
     alloc: &AllocationToPlace, 
     current_idx: usize,
-    solution: &HashMap<usize, (u32, u32)>, 
+    solution: &RawSolution, 
     allocs: &Vec<AllocationToPlace>,
     input: &EngineInput
 ) -> bool {
-    // 1. Indisponibilités directes (Prof / Groupe)
     if let Some(t_id) = alloc.teacher_id {
         if let Some(forbidden) = input.teacher_forbidden_slots.get(&t_id) {
             if forbidden.contains(&target_slot) { return false; }
@@ -100,9 +131,8 @@ fn is_valid(
     let target_day = *input.slot_day_map.get(&target_slot).unwrap_or(&0);
     let mut same_subject_count_today = 0;
 
-    // 2. Vérifier les conflits avec les cours DÉJÀ placés
     for (&other_idx, &(other_slot, other_room)) in solution.iter() {
-        if other_idx == current_idx { continue; } // Ne pas se comparer à soi-même
+        if other_idx == current_idx { continue; } 
         
         let other_alloc = &allocs[other_idx];
         
