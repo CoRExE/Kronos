@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import ConfirmationModal from "./ui/ConfirmationModal";
 
 interface Subject { id: number; name: string; }
 interface StudentGroup { id: number; name: string; }
@@ -18,6 +19,7 @@ export default function AllocationsManager() {
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const [selectedGroup, setSelectedGroup] = useState<string>("");
   const [selectedSubject, setSelectedSubject] = useState<string>("");
@@ -46,7 +48,6 @@ export default function AllocationsManager() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedGroup || !selectedSubject) return;
-
     try {
       await invoke("create_allocation", { 
         groupId: parseInt(selectedGroup),
@@ -60,9 +61,11 @@ export default function AllocationsManager() {
     } catch (err) { alert("Erreur: " + err); }
   }
 
-  async function handleDelete(id: number) {
+  async function confirmDelete() {
+    if (deleteId === null) return;
     try {
-      await invoke("delete_allocation", { id });
+      await invoke("delete_allocation", { id: deleteId });
+      setDeleteId(null);
       loadAllData();
     } catch (err) { alert(err); }
   }
@@ -126,12 +129,20 @@ export default function AllocationsManager() {
                 <td style={{ padding: "0.5rem", opacity: 0.7 }}>{alloc.teacher_name || "-"}</td>
                 <td style={{ padding: "0.5rem" }}><span style={{ fontSize: "0.75rem", background: "rgba(128,128,128,0.2)", padding: "2px 4px", borderRadius: "4px" }}>{alloc.required_room_type}</span></td>
                 <td style={{ padding: "0.5rem" }}>{alloc.count}h</td>
-                <td style={{ padding: "0.5rem" }}><button onClick={() => handleDelete(alloc.id)} style={{ color: "red", background: "transparent", border: "none", cursor: "pointer" }}>×</button></td>
+                <td style={{ padding: "0.5rem" }}><button onClick={() => setDeleteId(alloc.id)} style={{ color: "red", background: "transparent", border: "none", cursor: "pointer" }}>×</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+
+      <ConfirmationModal 
+        isOpen={deleteId !== null}
+        title="Supprimer cette allocation ?"
+        message="Le volume horaire sera retiré des besoins de génération."
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }

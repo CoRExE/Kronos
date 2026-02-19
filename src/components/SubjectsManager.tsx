@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import ConfirmationModal from "./ui/ConfirmationModal";
 
 interface Subject {
   id: number;
@@ -11,6 +12,7 @@ interface Subject {
 export default function SubjectsManager() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   // Form state
   const [name, setName] = useState("");
@@ -30,21 +32,18 @@ export default function SubjectsManager() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!name) return;
-
     try {
-      await invoke("create_subject", { 
-        name, 
-        shortCode: shortCode || null, 
-        color
-      });
+      await invoke("create_subject", { name, shortCode: shortCode || null, color });
       setName(""); setShortCode("");
       fetchSubjects();
     } catch (err) { alert("Erreur: " + err); }
   }
 
-  async function handleDelete(id: number) {
+  async function confirmDelete() {
+    if (deleteId === null) return;
     try {
-      await invoke("delete_subject", { id });
+      await invoke("delete_subject", { id: deleteId });
+      setDeleteId(null);
       fetchSubjects();
     } catch (err) { alert(err); }
   }
@@ -77,11 +76,19 @@ export default function SubjectsManager() {
                 <strong>{sub.name}</strong>
                 {sub.short_code && <span style={{ opacity: 0.6, fontSize: "0.9rem" }}>({sub.short_code})</span>}
               </div>
-              <button onClick={() => handleDelete(sub.id)} style={{ color: "#ff4d4d", background: "transparent", border: "none", cursor: "pointer" }}>Supprimer</button>
+              <button onClick={() => setDeleteId(sub.id)} style={{ color: "#ff4d4d", background: "transparent", border: "none", cursor: "pointer" }}>Supprimer</button>
             </li>
           ))}
         </ul>
       )}
+
+      <ConfirmationModal 
+        isOpen={deleteId !== null}
+        title="Supprimer la matière ?"
+        message="Cette action est irréversible. La matière sera retirée de toutes les allocations liées."
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }
