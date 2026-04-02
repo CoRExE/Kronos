@@ -134,7 +134,8 @@ pub fn run() {
             // Generator & Schedule
             generator::generate_schedule,
             generator::get_scheduled_lessons,
-            generator::move_lesson
+            generator::move_lesson,
+            generator::unlock_lesson
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

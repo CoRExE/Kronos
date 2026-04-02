@@ -116,3 +116,16 @@ pub fn move_lesson(state: State<AppState>, lesson_id: i32, new_slot_id: i32) -> 
 
     Ok(())
 }
+
+/// Déverrouille un cours pour qu'il puisse être déplacé par l'algorithme.
+#[tauri::command]
+pub fn unlock_lesson(state: State<AppState>, lesson_id: i32) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|_| "Failed to lock DB")?;
+
+    conn.execute(
+        "UPDATE scheduled_lessons SET is_locked = 0 WHERE id = ?1",
+        [lesson_id],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(())
+}

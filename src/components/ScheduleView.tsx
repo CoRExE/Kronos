@@ -32,7 +32,7 @@ interface ScheduledLessonView {
 interface TimeSlotLabel { id: number; start: string; end: string; }
 
 // --- COMPOSANT DRAGGABLE ---
-function DraggableLesson({ lesson }: { lesson: ScheduledLessonView }) {
+function DraggableLesson({ lesson, onUnlock }: { lesson: ScheduledLessonView, onUnlock: (id: number) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `lesson-${lesson.id}`,
     data: { lessonId: lesson.id }
@@ -59,7 +59,26 @@ function DraggableLesson({ lesson }: { lesson: ScheduledLessonView }) {
     <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ fontWeight: "bold", marginBottom: "2px" }}>{lesson.subject_name}</div>
-        {lesson.is_locked && <span title="Verrouillé (ne bougera pas à la prochaine génération)" style={{ fontSize: "0.7rem", opacity: 0.8 }}>🔒</span>}
+        
+        {lesson.is_locked && (
+            <button 
+                onClick={(e) => {
+                    e.stopPropagation(); // Évite de déclencher le drag
+                    onUnlock(lesson.id);
+                }}
+                title="Cliquer pour déverrouiller"
+                style={{ 
+                    background: "rgba(255,255,255,0.1)", 
+                    border: "none", 
+                    borderRadius: "4px", 
+                    cursor: "pointer", 
+                    fontSize: "0.7rem", 
+                    padding: "2px 4px" 
+                }}
+            >
+                🔒
+            </button>
+        )}
       </div>
       <div style={{ opacity: 0.8 }}>{lesson.group_name}</div>
       <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "4px" }}>
@@ -142,6 +161,15 @@ export default function ScheduleView() {
     }
   }
 
+  async function handleUnlock(lessonId: number) {
+    try {
+        await invoke("unlock_lesson", { lessonId });
+        await loadData();
+    } catch (err) {
+        alert("Erreur lors du déverrouillage : " + err);
+    }
+  }
+
   const filteredLessons = lessons.filter(l => l.group_id === selectedGroupId);
 
   return (
@@ -184,7 +212,7 @@ export default function ScheduleView() {
                     const lesson = filteredLessons.find(l => l.day_index === dayIdx && l.start_time === label.start);
                     return (
                       <DroppableCell key={dayIdx} dayIndex={dayIdx} slotId={label.id}>
-                        {lesson && <DraggableLesson lesson={lesson} />}
+                        {lesson && <DraggableLesson lesson={lesson} onUnlock={handleUnlock} />}
                       </DroppableCell>
                     );
                   })}
