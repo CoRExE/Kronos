@@ -26,11 +26,12 @@ interface ScheduledLessonView {
   teacher_name: string | null;
   subject_color: string;
   room_name: string | null;
+  is_locked: boolean;
 }
 
 interface TimeSlotLabel { id: number; start: string; end: string; }
 
-// --- COMPOSANT DRAGGABLE (La Carte de cours) ---
+// --- COMPOSANT DRAGGABLE ---
 function DraggableLesson({ lesson }: { lesson: ScheduledLessonView }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `lesson-${lesson.id}`,
@@ -51,11 +52,15 @@ function DraggableLesson({ lesson }: { lesson: ScheduledLessonView }) {
     display: "flex",
     flexDirection: "column",
     boxShadow: isDragging ? "0 5px 15px rgba(0,0,0,0.3)" : "none",
+    position: "relative" as const
   };
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-      <div style={{ fontWeight: "bold", marginBottom: "2px" }}>{lesson.subject_name}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ fontWeight: "bold", marginBottom: "2px" }}>{lesson.subject_name}</div>
+        {lesson.is_locked && <span title="Verrouillé (ne bougera pas à la prochaine génération)" style={{ fontSize: "0.7rem", opacity: 0.8 }}>🔒</span>}
+      </div>
       <div style={{ opacity: 0.8 }}>{lesson.group_name}</div>
       <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "4px" }}>
           {lesson.teacher_name && <div style={{ opacity: 0.6, fontStyle: "italic", fontSize: "0.7rem" }}>{lesson.teacher_name}</div>}
@@ -65,7 +70,7 @@ function DraggableLesson({ lesson }: { lesson: ScheduledLessonView }) {
   );
 }
 
-// --- COMPOSANT DROPPABLE (La Case vide) ---
+// --- COMPOSANT DROPPABLE ---
 function DroppableCell({ dayIndex, slotId, children }: { dayIndex: number, slotId: number, children?: React.ReactNode }) {
   const { isOver, setNodeRef } = useDroppable({
     id: `cell-${dayIndex}-${slotId}`,
@@ -96,24 +101,14 @@ export default function ScheduleView() {
   const [timeLabels, setTimeLabels] = useState<TimeSlotLabel[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Capteur pour éviter que le clic de sélection soit confondu avec un drag
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // On doit bouger de 8px pour commencer le drag
-      },
-    })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     setLoading(true);
     try {
-      // 1. Charger les labels des slots (car on a besoin des IDs pour le drop)
       const allSlots = await invoke<any[]>("get_time_slots");
-      
-      // On crée des labels uniques par heure de début
       const labelsMap: Record<string, TimeSlotLabel> = {};
       allSlots.forEach(s => {
         labelsMap[s.start_time] = { id: s.id, start: s.start_time, end: s.end_time };
@@ -121,7 +116,6 @@ export default function ScheduleView() {
       const sortedLabels = Object.values(labelsMap).sort((a, b) => a.start.localeCompare(b.start));
       setTimeLabels(sortedLabels);
 
-      // 2. Charger les leçons et groupes
       const [lessonsData, groupsData] = await Promise.all([
         invoke<ScheduledLessonView[]>("get_scheduled_lessons"),
         invoke<StudentGroup[]>("get_all_groups")
@@ -138,17 +132,13 @@ export default function ScheduleView() {
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over) return;
-
     const lessonId = active.data.current?.lessonId;
     const newSlotId = over.data.current?.slotId;
-
     if (lessonId && newSlotId) {
       try {
         await invoke("move_lesson", { lessonId, newSlotId });
-        await loadData(); // Recharger pour voir le changement (et le verrouillage)
-      } catch (err) {
-        alert("Déplacement impossible : " + err);
-      }
+        await loadData();
+      } catch (err) { alert("Déplacement impossible : " + err); }
     }
   }
 
@@ -171,43 +161,38 @@ export default function ScheduleView() {
           <button onClick={loadData} style={{ padding: "0.5rem 1rem", cursor: "pointer" }}>🔄 Actualiser</button>
         </div>
 
-        {loading ? (
-          <p>Chargement...</p>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: "800px" }}>
-              <thead>
-                <tr>
-                  <th style={{ width: "80px", padding: "10px", border: "1px solid rgba(128,128,128,0.2)" }}>Heure</th>
-                  {DAYS.map((day, i) => (
-                    <th key={i} style={{ padding: "10px", border: "1px solid rgba(128,128,128,0.2)", background: "rgba(128,128,128,0.05)" }}>
-                      {day}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {timeLabels.map(label => (
-                  <tr key={label.start}>
-                    <td style={{ padding: "10px", border: "1px solid rgba(128,128,128,0.2)", textAlign: "center", fontSize: "0.8rem", fontWeight: "bold", background: "rgba(128,128,128,0.05)" }}>
-                      {label.start}<br/><span style={{ opacity: 0.5, fontWeight: "normal" }}>{label.end}</span>
-                    </td>
-
-                    {[0, 1, 2, 3, 4, 5].map(dayIdx => {
-                      const lesson = filteredLessons.find(l => l.day_index === dayIdx && l.start_time === label.start);
-                      
-                      return (
-                        <DroppableCell key={dayIdx} dayIndex={dayIdx} slotId={label.id}>
-                          {lesson && <DraggableLesson lesson={lesson} />}
-                        </DroppableCell>
-                      );
-                    })}
-                  </tr>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: "800px" }}>
+            <thead>
+              <tr>
+                <th style={{ width: "80px", padding: "10px", border: "1px solid rgba(128,128,128,0.2)" }}>Heure</th>
+                {DAYS.map((day, i) => (
+                  <th key={i} style={{ padding: "10px", border: "1px solid rgba(128,128,128,0.2)", background: "rgba(128,128,128,0.05)" }}>
+                    {day}
+                  </th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              </tr>
+            </thead>
+            <tbody>
+              {timeLabels.map(label => (
+                <tr key={label.start}>
+                  <td style={{ padding: "10px", border: "1px solid rgba(128,128,128,0.2)", textAlign: "center", fontSize: "0.8rem", fontWeight: "bold", background: "rgba(128,128,128,0.05)" }}>
+                    {label.start}<br/><span style={{ opacity: 0.5, fontWeight: "normal" }}>{label.end}</span>
+                  </td>
+
+                  {[0, 1, 2, 3, 4, 5].map(dayIdx => {
+                    const lesson = filteredLessons.find(l => l.day_index === dayIdx && l.start_time === label.start);
+                    return (
+                      <DroppableCell key={dayIdx} dayIndex={dayIdx} slotId={label.id}>
+                        {lesson && <DraggableLesson lesson={lesson} />}
+                      </DroppableCell>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </DndContext>
   );

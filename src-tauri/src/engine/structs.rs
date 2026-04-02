@@ -6,8 +6,9 @@ use std::collections::{HashMap, HashSet};
 pub struct EngineInput {
     pub time_slots: Vec<u32>, 
     pub slot_day_map: HashMap<u32, u32>, 
-    pub rooms: Vec<(u32, String)>, // (ID, Type)
+    pub rooms: Vec<(u32, String)>, 
     pub allocations: Vec<AllocationToPlace>,
+    pub locked_lessons: Vec<LockedLesson>, // NOUVEAU
     
     // Configuration globale
     pub max_daily_hours_per_subject: i32,
@@ -16,6 +17,13 @@ pub struct EngineInput {
     // Contraintes d'indisponibilité
     pub teacher_forbidden_slots: HashMap<i32, HashSet<u32>>,
     pub group_forbidden_slots: HashMap<i32, HashSet<u32>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LockedLesson {
+    pub allocation_id: i32,
+    pub slot_id: u32,
+    pub room_id: u32,
 }
 
 #[allow(dead_code)]
@@ -30,6 +38,5 @@ pub struct AllocationToPlace {
 
 #[derive(Debug, Clone)]
 pub struct ScheduleSolution {
-    // (AllocationID, SlotID, RoomID)
     pub placements: Vec<(i32, u32, u32)>, 
 }

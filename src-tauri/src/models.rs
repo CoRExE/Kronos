@@ -73,6 +73,7 @@ pub struct ScheduledLessonView {
     pub subject_color: String,
     pub room_id: Option<i32>,
     pub room_name: Option<String>,
+    pub is_locked: bool, // NOUVEAU
 }
 
 #[derive(Debug, Serialize, Deserialize)]
