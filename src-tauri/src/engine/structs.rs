@@ -1,0 +1,42 @@
+use std::collections::{HashMap, HashSet};
+
+// Structures optimisées pour le calcul (In-Memory)
+
+#[derive(Debug, Clone)]
+pub struct EngineInput {
+    pub time_slots: Vec<u32>, 
+    pub slot_day_map: HashMap<u32, u32>, 
+    pub rooms: Vec<(u32, String)>, 
+    pub allocations: Vec<AllocationToPlace>,
+    pub locked_lessons: Vec<LockedLesson>, // NOUVEAU
+    
+    // Configuration globale
+    pub max_daily_hours_per_subject: i32,
+    pub allow_consecutive_subjects: bool,
+
+    // Contraintes d'indisponibilité
+    pub teacher_forbidden_slots: HashMap<i32, HashSet<u32>>,
+    pub group_forbidden_slots: HashMap<i32, HashSet<u32>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LockedLesson {
+    pub allocation_id: i32,
+    pub slot_id: u32,
+    pub room_id: u32,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct AllocationToPlace {
+    pub id: i32,
+    pub group_id: i32,
+    pub teacher_id: Option<i32>,
+    pub subject_id: i32,
+    pub required_room_type: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ScheduleSolution {
+    pub placements: Vec<(i32, u32, u32)>, 
+}

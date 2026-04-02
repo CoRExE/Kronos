@@ -8,23 +8,28 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:clean": "cd src-tauri && cargo clean && cd ..",
     "tauri:d": "tauri dev",
     "tauri:b": "tauri build",
-    "up-version": "node scripts/bump-version.cjs"
+    "tauri:clean": "cd src-tauri && cargo clean",
+    "tauri:test": "cd src-tauri && cargo test",
+    "up-version": "node scripts/bump-version.cjs",
+    "db-clean": "cd ~ && rm 'Library/Application Support/com.ceestos.kronos/kronos.db'"
   },
   "dependencies": {
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2"
+    "@tauri-apps/plugin-opener": "^2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4",
-    "@tauri-apps/cli": "^2"
+    "vite": "^7.0.4"
   }
 }

@@ -1,53 +1,80 @@
-# 🏗 Architecture Technique
+# 🏗 Architecture Technique & Données
 
 ## Vue d'ensemble
 
-L'application suit une architecture **Frontend-Driven** pilotée par un **Backend Embedded**.
-Le Frontend gère l'état visuel. Le Backend (Rust) agit comme une API locale qui expose des "Commandes" pour :
+Kronos utilise une architecture **Monolithe Modulaire Local**.
 
-1. Le CRUD (Create, Read, Update, Delete) des données via SQLite.
-2. Le calcul intensif (Génération d'emploi du temps).
+- **Frontend (UI)** : Gère l'affichage et la saisie utilisateur. Il ne stocke rien.
+- **Backend (Rust)** : Gère la logique, les calculs lourds et l'accès disque.
+- **State** : La connexion BDD est maintenue dans un `Mutex<rusqlite::Connection>` au sein de l'état Tauri.
 
-## Flux de Données
+## 💾 Base de Données (SQLite)
 
-1. **Frontend** : L'utilisateur définit les matières et contraintes.
-2. **Tauri Command** : Appel d'une fonction Rust (`save_constraints`, `generate_schedule`).
-3. **Rust (Engine)** :
-    * Lecture des données depuis SQLite (via `rusqlite`).
-    * Exécution de l'algorithme en mémoire (RAM) pour la performance.
-    * Sauvegarde du résultat final dans SQLite.
-4. **Frontend** : Réception du résultat et affichage.
+Le fichier de base de données est créé localement au premier lancement (`kronos.db`).
 
-## 💾 Schéma de Base de Données (SQLite)
+### Schéma Relationnel
 
-Le modèle relationnel est conçu pour être simple et extensible.
+```mermaid
+erDiagram
+    PROJECT_CONFIG {
+        string key PK
+        string value
+    }
+    SUBJECT {
+        int id PK
+        string name
+        string color
+    }
+    STUDENT_GROUP {
+        int id PK
+        string name
+        int head_count
+    }
+    TEACHER {
+        int id PK
+        string name
+    }
+    ALLOCATION {
+        int id PK
+        int group_id FK
+        int subject_id FK
+        int count
+    }
+    TIME_SLOT {
+        int id PK
+        int day_index
+        string start_time
+    }
+    SCHEDULED_LESSON {
+        int id PK
+        int allocation_id FK
+        int slot_id FK
+    }
 
-### Tables Principales
+    ALLOCATION }o--|| SUBJECT : requires
+    ALLOCATION }o--|| STUDENT_GROUP : belongs_to
+    SCHEDULED_LESSON }o--|| ALLOCATION : realizes
+    SCHEDULED_LESSON }o--|| TIME_SLOT : at
+```
 
-**1. `subjects` (Matières)**
+### Description des Tables Clés
 
-* `id` (PK): Integer
-* `name`: Text
-* `color`: Text (Hex code pour l'affichage)
-* `hours_per_week`: Integer (Volume horaire à placer)
+- **`project_config`** : Table clé-valeur essentielle.
+  - `school_mode` : `SINGLE_CLASS` (cache les profs/salles) ou `MULTI_CLASS`.
+  - `slot_duration` : Durée d'un "bloc" (ex: 30, 45, 60 min).
 
-**2. `slots` (Créneaux horaires abstraits)**
+- **`allocations`** : Représente la demande brute.
+  - Exemple : "Le groupe CM2-A (id=1) veut 4 blocs de Maths (id=5)".
 
-* `id` (PK): Integer
-* `day_index`: Integer (0=Lundi, 1=Mardi...)
-* `hour_index`: Integer (0=8h00, 1=9h00...)
-* *Note : Permet de définir les "cases" disponibles dans une semaine.*
+- **`scheduled_lessons`** : Représente la solution calculée.
+  - Exemple : "L'allocation #12 est placée le Lundi à 08h00".
 
-**3. `constraints` (Règles)**
+## 🔄 Flux de Données (Data Flow)
 
-* `id` (PK): Integer
-* `type`: Text (Ex: 'MAX_HOURS_DAY', 'FIXED_SLOT')
-* `target_subject_id`: Integer (Nullable, si la règle s'applique à une matière précise)
-* `value`: Integer (La valeur de la contrainte, ex: "4" heures max)
-
-**4. `generated_schedules` (Résultats)**
-
-* `id` (PK): Integer
-* `subject_id`: FK -> subjects
-* `slot_id`: FK -> slots
-* `version_id`: Integer (Pour gérer plusieurs versions d'emploi du temps)
+1. **Initialisation** : Tauri lance `init_db`. Si la base est vide, création des tables.
+2. **Configuration** : L'utilisateur choisit le "Profil". Cela écrit dans `project_config`.
+3. **Saisie** : Le Front envoie des commandes (`create_subject`, `set_allocation`) au Rust qui écrit via `rusqlite` (Sync).
+4. **Génération** :
+    - Rust charge toutes les allocations et constraints en mémoire (RAM).
+    - L'algo tourne sans toucher à la DB.
+    - Une fois terminé, Rust fait un `INSERT` massif des résultats dans `scheduled_lessons`.
