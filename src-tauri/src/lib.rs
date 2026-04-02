@@ -133,7 +133,8 @@ pub fn run() {
             rooms::delete_room,
             // Generator & Schedule
             generator::generate_schedule,
-            generator::get_scheduled_lessons
+            generator::get_scheduled_lessons,
+            generator::move_lesson
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,165 +1,214 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { 
+  DndContext, 
+  useDraggable, 
+  useDroppable, 
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
-interface Entity { id: number; name: string; }
+interface StudentGroup { id: number; name: string; }
+
 interface ScheduledLessonView {
-  id: number; day_index: number; start_time: string; end_time: string;
-  group_id: number; group_name: string;
-  subject_name: string; subject_color: string;
-  teacher_id: number | null; teacher_name: string | null;
-  room_id: number | null; room_name: string | null;
+  id: number;
+  day_index: number;
+  start_time: string;
+  end_time: string;
+  group_id: number;
+  group_name: string;
+  subject_name: string;
+  teacher_name: string | null;
+  subject_color: string;
+  room_name: string | null;
 }
-interface TimeSlotLabel { start: string; end: string; }
 
-type ViewMode = "GROUP" | "TEACHER" | "ROOM";
+interface TimeSlotLabel { id: number; start: string; end: string; }
 
+// --- COMPOSANT DRAGGABLE (La Carte de cours) ---
+function DraggableLesson({ lesson }: { lesson: ScheduledLessonView }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `lesson-${lesson.id}`,
+    data: { lessonId: lesson.id }
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+    cursor: "grab",
+    zIndex: isDragging ? 1000 : 1,
+    height: "100%",
+    borderLeft: `4px solid ${lesson.subject_color}`, 
+    background: "rgba(128, 128, 128, 0.15)", 
+    padding: "6px", 
+    borderRadius: "4px",
+    fontSize: "0.8rem",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: isDragging ? "0 5px 15px rgba(0,0,0,0.3)" : "none",
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      <div style={{ fontWeight: "bold", marginBottom: "2px" }}>{lesson.subject_name}</div>
+      <div style={{ opacity: 0.8 }}>{lesson.group_name}</div>
+      <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "4px" }}>
+          {lesson.teacher_name && <div style={{ opacity: 0.6, fontStyle: "italic", fontSize: "0.7rem" }}>{lesson.teacher_name}</div>}
+          {lesson.room_name && <div style={{ fontSize: "0.65rem", background: "rgba(128,128,128,0.2)", padding: "1px 4px", borderRadius: "3px", fontWeight: "bold" }}>{lesson.room_name}</div>}
+      </div>
+    </div>
+  );
+}
+
+// --- COMPOSANT DROPPABLE (La Case vide) ---
+function DroppableCell({ dayIndex, slotId, children }: { dayIndex: number, slotId: number, children?: React.ReactNode }) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `cell-${dayIndex}-${slotId}`,
+    data: { dayIndex, slotId }
+  });
+
+  const style = {
+    border: "1px solid rgba(128,128,128,0.2)", 
+    padding: "4px",
+    verticalAlign: "top",
+    height: "100px",
+    background: isOver ? "rgba(100, 108, 255, 0.2)" : "transparent",
+    transition: "background 0.2s"
+  };
+
+  return (
+    <td ref={setNodeRef} style={style}>
+      {children}
+    </td>
+  );
+}
+
+// --- COMPOSANT PRINCIPAL ---
 export default function ScheduleView() {
   const [lessons, setLessons] = useState<ScheduledLessonView[]>([]);
-  const [entities, setEntities] = useState<{ groups: Entity[], teachers: Entity[], rooms: Entity[] }>({ groups: [], teachers: [], rooms: [] });
-  
-  const [viewMode, setViewMode] = useState<ViewMode>("GROUP");
-  const [selectedEntityId, setSelectedEntityId] = useState<number | null>(null);
-  
+  const [groups, setGroups] = useState<StudentGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [timeLabels, setTimeLabels] = useState<TimeSlotLabel[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Capteur pour éviter que le clic de sélection soit confondu avec un drag
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // On doit bouger de 8px pour commencer le drag
+      },
+    })
+  );
 
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     setLoading(true);
     try {
-      const [lessonsData, groupsData, teachersData, roomsData] = await Promise.all([
+      // 1. Charger les labels des slots (car on a besoin des IDs pour le drop)
+      const allSlots = await invoke<any[]>("get_time_slots");
+      
+      // On crée des labels uniques par heure de début
+      const labelsMap: Record<string, TimeSlotLabel> = {};
+      allSlots.forEach(s => {
+        labelsMap[s.start_time] = { id: s.id, start: s.start_time, end: s.end_time };
+      });
+      const sortedLabels = Object.values(labelsMap).sort((a, b) => a.start.localeCompare(b.start));
+      setTimeLabels(sortedLabels);
+
+      // 2. Charger les leçons et groupes
+      const [lessonsData, groupsData] = await Promise.all([
         invoke<ScheduledLessonView[]>("get_scheduled_lessons"),
-        invoke<Entity[]>("get_all_groups"),
-        invoke<Entity[]>("get_all_teachers"),
-        invoke<Entity[]>("get_all_rooms")
+        invoke<StudentGroup[]>("get_all_groups")
       ]);
       
       setLessons(lessonsData);
-      setEntities({ groups: groupsData, teachers: teachersData, rooms: roomsData });
-
-      // Sélection par défaut
-      if (selectedEntityId === null) {
-        if (groupsData.length > 0) setSelectedEntityId(groupsData[0].id);
+      setGroups(groupsData);
+      if (groupsData.length > 0 && selectedGroupId === null) {
+        setSelectedGroupId(groupsData[0].id);
       }
-
-      const labels: Record<string, string> = {};
-      lessonsData.forEach(l => { labels[l.start_time] = l.end_time; });
-      const sortedLabels = Object.entries(labels).map(([start, end]) => ({ start, end })).sort((a, b) => a.start.localeCompare(b.start));
-      setTimeLabels(sortedLabels);
     } catch (err) { console.error(err); } finally { setLoading(false); }
   }
 
-  // Logique de filtrage dynamique
-  const filteredLessons = lessons.filter(l => {
-    if (viewMode === "GROUP") return l.group_id === selectedEntityId;
-    if (viewMode === "TEACHER") return l.teacher_id === selectedEntityId;
-    if (viewMode === "ROOM") return l.room_id === selectedEntityId;
-    return false;
-  });
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over) return;
 
-  const currentEntityList = viewMode === "GROUP" ? entities.groups : viewMode === "TEACHER" ? entities.teachers : entities.rooms;
+    const lessonId = active.data.current?.lessonId;
+    const newSlotId = over.data.current?.slotId;
+
+    if (lessonId && newSlotId) {
+      try {
+        await invoke("move_lesson", { lessonId, newSlotId });
+        await loadData(); // Recharger pour voir le changement (et le verrouillage)
+      } catch (err) {
+        alert("Déplacement impossible : " + err);
+      }
+    }
+  }
+
+  const filteredLessons = lessons.filter(l => l.group_id === selectedGroupId);
 
   return (
-    <div style={{ padding: "1rem", marginTop: "2rem", borderTop: "2px solid rgba(128,128,128,0.2)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
-        
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <h2>📅 Emploi du Temps</h2>
-            
-            {/* Sélecteur de MODE */}
-            <select 
-                value={viewMode} 
-                onChange={(e) => {
-                    const mode = e.target.value as ViewMode;
-                    setViewMode(mode);
-                    // Reset sélection sur le premier de la nouvelle liste
-                    const newList = mode === "GROUP" ? entities.groups : mode === "TEACHER" ? entities.teachers : entities.rooms;
-                    if (newList.length > 0) setSelectedEntityId(newList[0].id);
-                }}
-                style={{ padding: "0.5rem", borderRadius: "4px", background: "rgba(128,128,128,0.1)", color: "inherit", border: "1px solid rgba(128,128,128,0.3)" }}
-            >
-                <option value="GROUP">Vue par Classe</option>
-                <option value="TEACHER">Vue par Professeur</option>
-                <option value="ROOM">Vue par Salle</option>
-            </select>
-
-            {/* Sélecteur d'ENTITÉ */}
-            <select 
-                value={selectedEntityId || ""} 
-                onChange={(e) => setSelectedEntityId(Number(e.target.value))}
-                style={{ padding: "0.5rem", borderRadius: "4px", background: "rgba(100, 108, 255, 0.1)", color: "inherit", fontWeight: "bold", border: "1px solid #646cff" }}
-            >
-                {currentEntityList.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
-            </select>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div style={{ padding: "1rem", marginTop: "2rem", borderTop: "2px solid rgba(128,128,128,0.2)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <h2>📅 Emploi du Temps</h2>
+              <select 
+                  value={selectedGroupId || ""} 
+                  onChange={(e) => setSelectedGroupId(Number(e.target.value))}
+                  style={{ padding: "0.5rem", borderRadius: "4px", background: "rgba(100, 108, 255, 0.1)", color: "inherit", fontWeight: "bold", border: "1px solid #646cff" }}
+              >
+                  {groups.map(g => <option key={g.id} value={g.id}>Classe : {g.name}</option>)}
+              </select>
+          </div>
+          <button onClick={loadData} style={{ padding: "0.5rem 1rem", cursor: "pointer" }}>🔄 Actualiser</button>
         </div>
 
-        <button onClick={loadData} style={{ padding: "0.5rem 1rem", cursor: "pointer" }}>🔄 Actualiser</button>
-      </div>
-
-      {loading ? (
-        <p>Chargement...</p>
-      ) : timeLabels.length === 0 ? (
-        <p style={{ fontStyle: "italic", opacity: 0.5 }}>Aucun cours généré. Allez dans l'onglet Moteur.</p>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: "800px" }}>
-            <thead>
-              <tr>
-                <th style={{ width: "80px", padding: "10px", border: "1px solid rgba(128,128,128,0.2)" }}>Heure</th>
-                {DAYS.map((day, i) => (
-                  <th key={i} style={{ padding: "10px", border: "1px solid rgba(128,128,128,0.2)", background: "rgba(128,128,128,0.05)" }}>
-                    {day}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {timeLabels.map(label => (
-                <tr key={label.start}>
-                  <td style={{ padding: "10px", border: "1px solid rgba(128,128,128,0.2)", textAlign: "center", fontSize: "0.8rem", fontWeight: "bold", background: "rgba(128,128,128,0.05)" }}>
-                    {label.start}<br/><span style={{ opacity: 0.5, fontWeight: "normal" }}>{label.end}</span>
-                  </td>
-
-                  {[0, 1, 2, 3, 4, 5].map(dayIdx => {
-                    const lesson = filteredLessons.find(l => l.day_index === dayIdx && l.start_time === label.start);
-                    
-                    return (
-                      <td key={dayIdx} style={{ border: "1px solid rgba(128,128,128,0.2)", padding: "4px", verticalAlign: "top", height: "100px" }}>
-                        {lesson && (
-                          <div style={{ 
-                            height: "100%", borderLeft: `4px solid ${lesson.subject_color}`, 
-                            background: "rgba(128, 128, 128, 0.1)", padding: "6px", borderRadius: "4px", fontSize: "0.8rem",
-                            display: "flex", flexDirection: "column"
-                          }}>
-                            <div style={{ fontWeight: "bold", marginBottom: "2px" }}>{lesson.subject_name}</div>
-                            
-                            {/* Affichage adaptatif selon le mode de vue */}
-                            {viewMode !== "GROUP" && <div style={{ opacity: 0.8 }}>Classe: {lesson.group_name}</div>}
-                            
-                            <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "4px" }}>
-                                {viewMode !== "TEACHER" && lesson.teacher_name && (
-                                    <div style={{ opacity: 0.6, fontStyle: "italic", fontSize: "0.7rem" }}>{lesson.teacher_name}</div>
-                                )}
-                                {viewMode !== "ROOM" && lesson.room_name && (
-                                    <div style={{ fontSize: "0.65rem", background: "rgba(128,128,128,0.2)", padding: "1px 4px", borderRadius: "3px", fontWeight: "bold" }}>
-                                        {lesson.room_name}
-                                    </div>
-                                )}
-                            </div>
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
+        {loading ? (
+          <p>Chargement...</p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: "800px" }}>
+              <thead>
+                <tr>
+                  <th style={{ width: "80px", padding: "10px", border: "1px solid rgba(128,128,128,0.2)" }}>Heure</th>
+                  {DAYS.map((day, i) => (
+                    <th key={i} style={{ padding: "10px", border: "1px solid rgba(128,128,128,0.2)", background: "rgba(128,128,128,0.05)" }}>
+                      {day}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+              </thead>
+              <tbody>
+                {timeLabels.map(label => (
+                  <tr key={label.start}>
+                    <td style={{ padding: "10px", border: "1px solid rgba(128,128,128,0.2)", textAlign: "center", fontSize: "0.8rem", fontWeight: "bold", background: "rgba(128,128,128,0.05)" }}>
+                      {label.start}<br/><span style={{ opacity: 0.5, fontWeight: "normal" }}>{label.end}</span>
+                    </td>
+
+                    {[0, 1, 2, 3, 4, 5].map(dayIdx => {
+                      const lesson = filteredLessons.find(l => l.day_index === dayIdx && l.start_time === label.start);
+                      
+                      return (
+                        <DroppableCell key={dayIdx} dayIndex={dayIdx} slotId={label.id}>
+                          {lesson && <DraggableLesson lesson={lesson} />}
+                        </DroppableCell>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </DndContext>
   );
 }
