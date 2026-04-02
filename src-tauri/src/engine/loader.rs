@@ -72,7 +72,6 @@ pub fn load_data(conn: &Connection) -> Result<EngineInput, String> {
     for alloc_res in allocs_iter {
         let (id, group_id, subject_id, teacher_id, count, room_type) = alloc_res.map_err(|e| e.to_string())?;
         
-        // On ne place que le RESTE (Total demandé - Déjà verrouillé)
         let locked_for_this = *locked_counts.get(&id).unwrap_or(&0);
         let remaining = count - locked_for_this;
         
@@ -82,8 +81,23 @@ pub fn load_data(conn: &Connection) -> Result<EngineInput, String> {
     }
 
     // 6. Config globale
-    let max_daily_hours: i32 = conn.query_row("SELECT value FROM project_config WHERE key = 'global_max_daily_subject_hours'", [], |row| Ok(row.get::<String, _>(0)?.parse::<i32>().unwrap_or(2))).unwrap_or(2);
-    let allow_consecutive: bool = conn.query_row("SELECT value FROM project_config WHERE key = 'allow_consecutive_subjects'", [], |row| Ok(row.get::<String, _>(0)? == "true")).unwrap_or(false);
+    let max_daily_hours: i32 = conn.query_row(
+        "SELECT value FROM project_config WHERE key = 'global_max_daily_subject_hours'", 
+        [], 
+        |row| {
+            let s: String = row.get(0)?;
+            Ok(s.parse::<i32>().unwrap_or(2))
+        }
+    ).unwrap_or(2);
+
+    let allow_consecutive: bool = conn.query_row(
+        "SELECT value FROM project_config WHERE key = 'allow_consecutive_subjects'", 
+        [], 
+        |row| {
+            let s: String = row.get(0)?;
+            Ok(s == "true")
+        }
+    ).unwrap_or(false);
 
     Ok(EngineInput {
         time_slots, slot_day_map, rooms, allocations: allocations_to_place, locked_lessons,

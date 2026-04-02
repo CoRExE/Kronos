@@ -135,6 +135,7 @@ pub fn run() {
             generator::generate_schedule,
             generator::get_scheduled_lessons,
             generator::move_lesson,
+            generator::lock_lesson,
             generator::unlock_lesson
         ])
         .run(tauri::generate_context!())

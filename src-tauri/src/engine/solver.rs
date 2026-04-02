@@ -45,26 +45,8 @@ pub fn solve(input: &EngineInput) -> Result<ScheduleSolution, String> {
     }
 }
 
-// Score adapté à la nouvelle structure
-fn calculate_comfort_score(placements: &Vec<(i32, u32, u32)>, input: &EngineInput) -> i32 {
-    let mut holes = 0;
-    let mut teacher_days: HashMap<i32, HashMap<u32, Vec<u32>>> = HashMap::new();
-
-    // On a besoin de retrouver le teacher_id pour chaque allocation_id
-    // On va faire un petit mapping rapide
-    let mut alloc_teacher_map: HashMap<i32, Option<i32>> = HashMap::new();
-    for a in &input.allocations { alloc_teacher_map.insert(a.id, a.teacher_id); }
-    // Note: Pour les verrouillés, on n'a pas l'info dans Input.allocations (puisqu'ils sont retirés)
-    // TODO: Améliorer le loader pour passer TOUTES les métadonnées d'allocations séparément.
-    // Pour l'instant, on ignore les verrous dans le calcul du score pour rester simple.
-
-    for &(_alloc_id, slot_id, _room_id) in placements {
-        if let Some(&day) = input.slot_day_map.get(&slot_id) {
-            // (Simplification temporaire du score pour cette itération)
-            holes += 0; 
-        }
-    }
-    holes
+fn calculate_comfort_score(_placements: &Vec<(i32, u32, u32)>, _input: &EngineInput) -> i32 {
+    0 // Simplification temporaire pour supprimer les warnings
 }
 
 fn backtracking(
@@ -128,7 +110,7 @@ fn is_valid(
     // Pour cela, on a besoin de connaître les propriétés des allocations verrouillées.
     // Pour l'instant, par simplicité technique dans ce tour, on va juste vérifier les conflits physiques (Slot/Room).
     // Une version parfaite demanderait de charger toutes les métadonnées d'allocations dans EngineInput.
-    for &(l_alloc_id, l_slot_id, l_room_id) in base_placements {
+    for &(_l_alloc_id, l_slot_id, l_room_id) in base_placements {
         if target_slot == l_slot_id {
             if target_room == l_room_id { return false; } // Salle prise par un verrou
             // Note: Les conflits groupe/prof avec les verrous sont ignorés ici mais devraient être gérés.
