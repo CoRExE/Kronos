@@ -46,7 +46,7 @@ pnpm run tauri dev
 
 ## 📚 Documentation
 
-La documentation détaillée se trouve dans le dossier `./docs` :
+La documentation détaillée se trouve dans le dossier `/docs` :
 
 * **Architecture Technique** : Modèle de données et flux.
 * **Algorithmes** : Backtracking et Génétique.

@@ -15,6 +15,14 @@ const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
 interface StudentGroup { id: number; name: string; }
 
+interface TimeSlot {
+  id: number;
+  day_index: number;
+  day_name: string;
+  start_time: string;
+  end_time: string;
+}
+
 interface ScheduledLessonView {
   id: number;
   day_index: number;
@@ -29,7 +37,46 @@ interface ScheduledLessonView {
   is_locked: boolean;
 }
 
-interface TimeSlotLabel { id: number; start: string; end: string; }
+interface TimeRow {
+  start: string;
+  end: string;
+}
+
+// --- COMPOSANT TOAST ---
+function Toast({ message, type, onClose }: { message: string, type: 'error' | 'success', onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: '20px',
+      right: '20px',
+      padding: '12px 20px',
+      borderRadius: '8px',
+      backgroundColor: type === 'error' ? '#ff4d4f' : '#52c41a',
+      color: 'white',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      zIndex: 2000,
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      animation: 'slideIn 0.3s ease-out'
+    }}>
+      <span>{type === 'error' ? '❌' : '✅'}</span>
+      <span>{message}</span>
+      <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>×</button>
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 // --- COMPOSANT DRAGGABLE ---
 function DraggableLesson({ lesson, onLock, onUnlock }: { 
@@ -66,7 +113,7 @@ function DraggableLesson({ lesson, onLock, onUnlock }: {
         
         <button 
             onClick={(e) => {
-                e.stopPropagation(); // Évite de déclencher le drag
+                e.stopPropagation(); 
                 if (lesson.is_locked) onUnlock(lesson.id);
                 else onLock(lesson.id);
             }}
@@ -93,10 +140,11 @@ function DraggableLesson({ lesson, onLock, onUnlock }: {
 }
 
 // --- COMPOSANT DROPPABLE ---
-function DroppableCell({ dayIndex, slotId, children }: { dayIndex: number, slotId: number, children?: React.ReactNode }) {
+function DroppableCell({ dayIndex, slotId, children }: { dayIndex: number, slotId: number | undefined, children?: React.ReactNode }) {
   const { isOver, setNodeRef } = useDroppable({
-    id: `cell-${dayIndex}-${slotId}`,
-    data: { dayIndex, slotId }
+    id: `cell-${dayIndex}-${slotId || 'none'}`,
+    data: { dayIndex, slotId },
+    disabled: !slotId
   });
 
   const style = {
@@ -119,24 +167,33 @@ function DroppableCell({ dayIndex, slotId, children }: { dayIndex: number, slotI
 export default function ScheduleView() {
   const [lessons, setLessons] = useState<ScheduledLessonView[]>([]);
   const [groups, setGroups] = useState<StudentGroup[]>([]);
+  const [allSlots, setAllSlots] = useState<TimeSlot[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
-  const [timeLabels, setTimeLabels] = useState<TimeSlotLabel[]>([]);
+  const [timeRows, setTimeRows] = useState<TimeRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string, type: 'error' | 'success' } | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   useEffect(() => { loadData(); }, []);
 
+  function showToast(message: string, type: 'error' | 'success') {
+    setToast({ message, type });
+  }
+
   async function loadData() {
     setLoading(true);
     try {
-      const allSlots = await invoke<any[]>("get_time_slots");
-      const labelsMap: Record<string, TimeSlotLabel> = {};
-      allSlots.forEach(s => {
-        labelsMap[s.start_time] = { id: s.id, start: s.start_time, end: s.end_time };
-      });
-      const sortedLabels = Object.values(labelsMap).sort((a, b) => a.start.localeCompare(b.start));
-      setTimeLabels(sortedLabels);
+      const slotsData = await invoke<TimeSlot[]>("get_time_slots");
+      setAllSlots(slotsData);
+
+      // Créer les lignes temporelles uniques
+      const timeMap: Record<string, string> = {};
+      slotsData.forEach(s => { timeMap[s.start_time] = s.end_time; });
+      const sortedRows = Object.entries(timeMap)
+        .sort(([startA], [startB]) => startA.localeCompare(startB))
+        .map(([start, end]) => ({ start, end }));
+      setTimeRows(sortedRows);
 
       const [lessonsData, groupsData] = await Promise.all([
         invoke<ScheduledLessonView[]>("get_scheduled_lessons"),
@@ -148,7 +205,10 @@ export default function ScheduleView() {
       if (groupsData.length > 0 && selectedGroupId === null) {
         setSelectedGroupId(groupsData[0].id);
       }
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+    } catch (err) { 
+        console.error(err); 
+        showToast("Erreur lors du chargement des données", "error");
+    } finally { setLoading(false); }
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -156,29 +216,35 @@ export default function ScheduleView() {
     if (!over) return;
     const lessonId = active.data.current?.lessonId;
     const newSlotId = over.data.current?.slotId;
+    
     if (lessonId && newSlotId) {
       try {
         await invoke("move_lesson", { lessonId, newSlotId });
+        showToast("Cours déplacé et verrouillé !", "success");
         await loadData();
-      } catch (err) { alert("Déplacement impossible : " + err); }
+      } catch (err) { 
+        showToast(String(err), "error");
+      }
     }
   }
 
   async function handleUnlock(lessonId: number) {
     try {
         await invoke("unlock_lesson", { lessonId });
+        showToast("Cours déverrouillé", "success");
         await loadData();
     } catch (err) {
-        alert("Erreur lors du déverrouillage : " + err);
+        showToast("Erreur déverrouillage : " + err, "error");
     }
   }
 
   async function handleLock(lessonId: number) {
     try {
         await invoke("lock_lesson", { lessonId });
+        showToast("Cours verrouillé", "success");
         await loadData();
     } catch (err) {
-        alert("Erreur lors du verrouillage : " + err);
+        showToast("Erreur verrouillage : " + err, "error");
     }
   }
 
@@ -187,6 +253,8 @@ export default function ScheduleView() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div style={{ padding: "1rem", marginTop: "2rem", borderTop: "2px solid rgba(128,128,128,0.2)" }}>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <h2>📅 Emploi du Temps</h2>
@@ -198,7 +266,9 @@ export default function ScheduleView() {
                   {groups.map(g => <option key={g.id} value={g.id}>Classe : {g.name}</option>)}
               </select>
           </div>
-          <button onClick={loadData} style={{ padding: "0.5rem 1rem", cursor: "pointer" }}>🔄 Actualiser</button>
+          <button onClick={loadData} style={{ padding: "0.5rem 1rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+            {loading ? "..." : "🔄 Actualiser"}
+          </button>
         </div>
 
         <div style={{ overflowX: "auto" }}>
@@ -214,16 +284,19 @@ export default function ScheduleView() {
               </tr>
             </thead>
             <tbody>
-              {timeLabels.map(label => (
-                <tr key={label.start}>
+              {timeRows.map(row => (
+                <tr key={row.start}>
                   <td style={{ padding: "10px", border: "1px solid rgba(128,128,128,0.2)", textAlign: "center", fontSize: "0.8rem", fontWeight: "bold", background: "rgba(128,128,128,0.05)" }}>
-                    {label.start}<br/><span style={{ opacity: 0.5, fontWeight: "normal" }}>{label.end}</span>
+                    {row.start}<br/><span style={{ opacity: 0.5, fontWeight: "normal" }}>{row.end}</span>
                   </td>
 
                   {[0, 1, 2, 3, 4, 5].map(dayIdx => {
-                    const lesson = filteredLessons.find(l => l.day_index === dayIdx && l.start_time === label.start);
+                    // Trouver le SLOT_ID exact pour ce (Jour, Heure)
+                    const slot = allSlots.find(s => s.day_index === dayIdx && s.start_time === row.start);
+                    const lesson = filteredLessons.find(l => l.day_index === dayIdx && l.start_time === row.start);
+                    
                     return (
-                      <DroppableCell key={dayIdx} dayIndex={dayIdx} slotId={label.id}>
+                      <DroppableCell key={dayIdx} dayIndex={dayIdx} slotId={slot?.id}>
                         {lesson && (
                           <DraggableLesson 
                             lesson={lesson} 
